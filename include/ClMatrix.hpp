@@ -20,8 +20,11 @@ public:
               ClMatrix  (ClMatrix const&)                                     = delete;
               ClMatrix  (ClMatrix &&);
     ClMatrix& operator= (const ClMatrix&)                                     = delete;
-    ClMatrix  operator* (const ClMatrix&)                                     const;
-    void      copyTo    (double*)                                             const;
+
+    void copyTo (double*) const;
+
+    ClMatrix operator* (const ClMatrix&) const;
+    ClMatrix sigmoid   ()                const;
 };
 
 #endif // CL_MATRIX_HPP

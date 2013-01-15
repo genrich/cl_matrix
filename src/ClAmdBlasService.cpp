@@ -4,9 +4,9 @@
 #include <stdexcept>
 #include <iostream>
 
-#include <clAmdBlas.h>
-
 #include "ClAmdBlasService.hpp"
+
+#include <clAmdBlas.h>
 
 using namespace std;
 

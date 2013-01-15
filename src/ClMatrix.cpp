@@ -5,11 +5,10 @@
 #include <iostream>
 #include <cassert>
 
-#include <clAmdBlas.h>
-
 #include "ClMatrix.hpp"
 #include "ClAmdBlasService.hpp"
 
+#include <clAmdBlas.h>
 
 using namespace std;
 
@@ -53,9 +52,16 @@ ClMatrix::~ClMatrix ()
         clReleaseMemObject (mem);
 }
 
+void ClMatrix::copyTo (double* data) const
+{
+    cl_int err = clEnqueueReadBuffer (clSrvc.queue (), mem, CL_TRUE, 0, rows * cols * sizeof (double), data, 0, NULL, NULL);
+    if (CL_SUCCESS != err)
+        throw runtime_error {"Couldn't read from the cl buffer object (" + to_string (err) + ")"};
+}
+
 ClMatrix ClMatrix::operator* (const ClMatrix& other) const
 {
-    ClMatrix newMatrix{rows, other.cols};
+    ClMatrix newMatrix {rows, other.cols};
 
     std::vector<cl::Event> event (1);
     clAmdBlasStatus status = clAmdBlasDgemmEx (clAmdBlasColumnMajor, clAmdBlasNoTrans, clAmdBlasNoTrans,
@@ -67,14 +73,12 @@ ClMatrix ClMatrix::operator* (const ClMatrix& other) const
     if (clAmdBlasSuccess != status)
         throw runtime_error {clSrvc.errMsg (status)};
 
-    // cl::Event::waitForEvents (event);
-
     return newMatrix;
 }
 
-void ClMatrix::copyTo (double* data) const
+ClMatrix ClMatrix::sigmoid () const
 {
-    cl_int err = clEnqueueReadBuffer (clSrvc.queue (), mem, CL_TRUE, 0, rows * cols * sizeof (double), data, 0, NULL, NULL);
-    if (CL_SUCCESS != err)
-        throw runtime_error {"Couldn't read from the cl buffer object (" + to_string (err) + ")"};
+    ClMatrix newMatrix {rows, cols};
+
+    return newMatrix;
 }

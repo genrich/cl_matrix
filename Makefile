@@ -9,7 +9,10 @@ LIBS_TEST=$(LIBS) boost_unit_test_framework
 
 .PHONY: all test macro
 
-all: _build/octave_cl_matrix.oct cl_matrix.oct
+all: _build _build/octave_cl_matrix.oct cl_matrix.oct
+
+_build:
+	mkdir $@
 
 _build/%.o: src/%.cpp
 	$(CC) $(CFLAGS) $(INC_DIRS:%=-I%) $(LIB_DIRS:%=-L%) $(LIBS:%=-l%) -o $@ $^
@@ -22,6 +25,9 @@ cl_matrix.oct: _build/octave_cl_matrix.oct
 
 _build/test: test/ClMatrixTest.cpp _build/ClMatrix.o _build/ClAmdBlasService.o
 	$(CC) $(CFLAGS_TEST) -o $@ $^ $(INC_DIRS:%=-I%) $(LIB_DIRS:%=-L%) $(LIBS_TEST:%=-l%)
+
+clean:
+	rm _build/*
 
 test: _build/test
 	$^ --log_level=message

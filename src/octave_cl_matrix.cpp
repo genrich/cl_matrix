@@ -101,7 +101,7 @@ Create OpenCL matrix                                                       \n\
             }
 
             octave_cl_matrix::register_type ();
-            // mlock ();
+            mlock ();
 
             INSTALL_BINOP (op_mul, octave_cl_matrix, octave_cl_matrix, mul);
 
@@ -157,4 +157,3 @@ Apply @code{sigmoid} function to @var{cl_matrix}                           \n\
     }
     return octave_value_list ();
 }
-
