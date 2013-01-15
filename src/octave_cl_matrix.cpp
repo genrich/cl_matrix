@@ -84,8 +84,10 @@ DEFCONV(cl_matrix_to_matrix, octave_cl_matrix, octave_matrix)
 }
 
 DEFUN_DLD (cl_matrix, args, nargout,
-"cl_matrix_value = cl_matrix(double_matrix)\n\
-\nCreates a OpenCl matrix.")
+"-*- texinfo -*-                                                           \n\
+@deftypefn{Loadable Function} {@var{ret} =} cl_matrix (@var{double_matrix})\n\
+Create OpenCL matrix                                                       \n\
+@end deftypefn                                                             \n")
 {
     int nargin = args.length ();
     if (nargin == 1 && (args (0).is_real_scalar () || args (0).is_real_matrix ()))
@@ -129,7 +131,20 @@ DEFUN_DLD (cl_matrix, args, nargout,
     return octave_value_list ();
 }
 
-DEFUN_DLD(sigmoid, args, nargout, "Sigmoid function applied to cl_matrix elements")
+DEFUN_DLD(sigmoid, args, nargout,
+"-*- texinfo -*-                                                           \n\
+@deftypefn {Mapping Function} {@var{cl_matrix} =} sigmoid (@var{cl_matrix})\n\
+Apply @code{sigmoid} function to @var{cl_matrix}                           \n\
+                                                                           \n\
+@example                                                                   \n\
+@group                                                                     \n\
+   1                                                                       \n\
+-------                                                                    \n\
+     -X                                                                    \n\
+1 + e                                                                      \n\
+@end group                                                                 \n\
+@end example                                                               \n\
+@end deftypefn                                                             \n")
 {
     int nargin = args.length ();
     if (nargin == 1 && octave_cl_matrix::static_type_id () == args (0).type_id ())

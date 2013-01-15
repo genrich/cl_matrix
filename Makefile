@@ -1,4 +1,4 @@
-CFLAGS=-c -std=c++11 -fPIC -m64 -g -DDEBUG -O2
+CFLAGS=-c -std=c++11 -fPIC -g -O2
 LDLAGS=-shared -Wl,-Bsymbolic
 INC_DIRS=include $(AMDAPPSDKROOT)/include $(AMDAPPBLASSDKROOT)/include /usr/local/include/octave-3.6.3
 LIB_DIRS=/usr/lib/fglrx $(AMDAPPBLASSDKROOT)/lib64 /usr/local/lib/octave/3.6.3 /usr/local/lib 
@@ -16,7 +16,6 @@ _build/%.o: src/%.cpp
 
 _build/octave_cl_matrix.oct: _build/octave_cl_matrix.o _build/ClMatrix.o _build/ClAmdBlasService.o
 	$(CC) $(LDLAGS) -o $@ $^ $(LIB_DIRS:%=-L%) $(LIBS:%=-l%)
-	strip $@
 
 cl_matrix.oct: _build/octave_cl_matrix.oct
 	ln -s _build/octave_cl_matrix.oct cl_matrix.oct
