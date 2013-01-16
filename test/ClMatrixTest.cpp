@@ -1,7 +1,5 @@
 #include <string>
 
-#include <clAmdBlas.h>
-
 using namespace std;
 
 #define BOOST_TEST_MODULE ClMatrixTest
@@ -15,59 +13,75 @@ BOOST_AUTO_TEST_CASE (ClMatrixMultiplyScalarTest)
 {
     double data1[] = {2},
            data2[] = {3},
-           data[1],
+           result[1],
            expectedResult[] = {6};
-    ClMatrix mat1{1, 1, data1},
-             mat2{1, 1, data2};
+    ClMatrix mat1 {1, 1, data1},
+             mat2 {1, 1, data2};
 
     ClMatrix mat = mat1 * mat2;
-    mat.copyTo (data);
+    mat.copyTo (result);
 
-    BOOST_CHECK_EQUAL (data[0], expectedResult[0]);
+    BOOST_CHECK_EQUAL (result[0], expectedResult[0]);
 }
 
 BOOST_AUTO_TEST_CASE (ClMatrixMultiplyVectors1Test)
 {
     double data1[] = {1, 2},
            data2[] = {3, 4},
-           data[1],
+           result[1],
            expectedResult[] = {11};
-    ClMatrix mat1{1, 2, data1},
-             mat2{2, 1, data2};
+    ClMatrix mat1 {1, 2, data1},
+             mat2 {2, 1, data2};
 
     ClMatrix mat = mat1 * mat2;
-    mat.copyTo (data);
+    mat.copyTo (result);
 
-    BOOST_CHECK_EQUAL (data[0], expectedResult[0]);
+    BOOST_CHECK_EQUAL (result[0], expectedResult[0]);
 }
 
 BOOST_AUTO_TEST_CASE (ClMatrixMultiplyVectors2Test)
 {
     double data1[] = {1, 2},
            data2[] = {3, 4},
-           data[4],
+           result[4],
            expectedResult[] = {3, 6, 4, 8};
-    ClMatrix mat1{2, 1, data1},
-             mat2{1, 2, data2};
+    ClMatrix mat1 {2, 1, data1},
+             mat2 {1, 2, data2};
 
     ClMatrix mat = mat1 * mat2;
-    mat.copyTo (data);
+    mat.copyTo (result);
 
-    BOOST_CHECK_EQUAL_COLLECTIONS (&data[0], &data[3], &expectedResult[0], &expectedResult[3]);
+    BOOST_CHECK_EQUAL_COLLECTIONS (&result[0], &result[3], &expectedResult[0], &expectedResult[3]);
 }
 
 BOOST_AUTO_TEST_CASE (ClMatrixMultiplyMatrixTest)
 {
     double data1[] = {1, 2, 3, 4},
            data2[] = {5, 6, 7, 8},
-           data[4],
+           result[4],
            expectedResult[] = {23, 34, 31, 46};
-    ClMatrix mat1{2, 2, data1},
-             mat2{2, 2, data2};
+    ClMatrix mat1 {2, 2, data1},
+             mat2 {2, 2, data2};
 
     ClMatrix mat = mat1 * mat2;
-    mat.copyTo (data);
+    mat.copyTo (result);
 
-    BOOST_CHECK_EQUAL_COLLECTIONS (&data[0], &data[3], &expectedResult[0], &expectedResult[3]);
+    BOOST_CHECK_EQUAL_COLLECTIONS (&result[0], &result[3], &expectedResult[0], &expectedResult[3]);
 }
 
+BOOST_AUTO_TEST_CASE (ClMatrixSigmoidTest)
+{
+    constexpr int size = 4;
+    double data[] = {1, 2, 3, 4},
+           result[size];
+    ClMatrix mat1 {2, 2, data};
+
+    ClMatrix mat = mat1.sigmoid ();
+    mat.copyTo (result);
+
+    constexpr double tolerance = 1e-10;
+    for (int i = 0; i < size; i++)
+    {
+        BOOST_CHECK_SMALL (result[i] - (1 / (1 + exp (-data[i]))), tolerance);
+    }
+}

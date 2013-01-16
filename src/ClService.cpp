@@ -1,39 +1,104 @@
-#include <stdio.h>
-#include <string.h>
+#include <string>
 #include <cstring>
 #include <stdexcept>
 #include <iostream>
+#include <fstream>
 
-#include "ClAmdBlasService.hpp"
+#include "ClService.hpp"
 
 #include <clAmdBlas.h>
 
 using namespace std;
 
-ClAmdBlasService clSrvc;
+ClService clSrvc;
 
-static cl::Device clDevice()
+static cl::Device clDevice ()
 {
     vector<cl::Platform> platforms;
-    cl::Platform::get(&platforms);
+    cl::Platform::get (&platforms);
 
     vector<cl::Device> devices;
-    platforms[0].getDevices(CL_DEVICE_TYPE_GPU, &devices);
-    return devices[0];
+    platforms [0].getDevices (CL_DEVICE_TYPE_GPU, &devices);
+    return devices [0];
 }
 
-ClAmdBlasService::ClAmdBlasService()
-    :device {clDevice()}, ctx {vector<cl::Device>{device}}, queue {ctx, device},
-    initialized (clAmdBlasSuccess == clAmdBlasSetup())
+static cl::Program loadProgram (string programName, int& errCode, string& message)
+{
+    if (0 != errCode)
+        return {};
+
+    try
+    {
+        ifstream kernelsFile {programName, ios::binary};
+        vector<char> buffer {istreambuf_iterator<char> {kernelsFile}, istreambuf_iterator<char> {}};
+        cl::Program::Binaries binaries {make_pair (buffer.data (), buffer.size ())};
+        cl::Program program {clSrvc.ctx, clSrvc.devices, binaries};
+        program.build ();
+        return program;
+    }
+    catch (exception& e)
+    {
+        errCode = 1;
+        message = e.what ();
+    }
+    return {};
+}
+
+static cl::Kernel loadKernel (const cl::Program& program, string kernelName, int& errCode, string& message)
+{
+    if (0 != errCode)
+        return {};
+
+    try
+    {
+        return {program, kernelName.c_str ()};
+    }
+    catch (cl::Error &e)
+    {
+        errCode = 1;
+        message = string (e.what ()) + ", " + ClService::errMsg (errCode);
+    }
+    catch (exception &e)
+    {
+        errCode = 1;
+        message = e.what ();
+    }
+    return {};
+}
+
+bool initClAmdBlas (int& errCode, string& message)
+{
+    if (0 != errCode)
+        return false;
+
+    errCode = clAmdBlasSetup ();
+    if (clAmdBlasSuccess == errCode)
+    {
+        message = "ok";
+        return true;
+    }
+    else
+    {
+        message = ClService::errMsg (errCode);
+        return false;
+    }
+}
+
+ClService::ClService ()
+    :errCode {0}, message {""},
+    device {clDevice ()}, devices {vector<cl::Device> {device}}, ctx {devices}, queue {ctx, device},
+    program {loadProgram ("kernels", errCode, message)},
+    sigmoid {loadKernel (program, "sigmoid", errCode, message)},
+    initialized {initClAmdBlas (errCode, message)}
 {
 }
 
-ClAmdBlasService::~ClAmdBlasService()
+ClService::~ClService ()
 {
-    clAmdBlasTeardown();
+    clAmdBlasTeardown ();
 }
 
-std::string ClAmdBlasService::errMsg (int code)
+std::string ClService::errMsg (int code)
 {
     switch (code)
     {

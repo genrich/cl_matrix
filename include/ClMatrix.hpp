@@ -11,7 +11,6 @@ class ClMatrix
 public:
     const int rows;
     const int cols;
-    bool      transpose;
 
 public:
               ClMatrix  (const int rows, const int cols);
@@ -21,7 +20,8 @@ public:
               ClMatrix  (ClMatrix &&);
     ClMatrix& operator= (const ClMatrix&)                                     = delete;
 
-    void copyTo (double*) const;
+    void   copyTo   (double*) const;
+    size_t byteSize ()        const;
 
     ClMatrix operator* (const ClMatrix&) const;
     ClMatrix sigmoid   ()                const;

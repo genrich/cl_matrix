@@ -1,1 +1,2 @@
-autoload ("sigmoid", "cl_matrix.oct");
+autoload ("cl_matrix", "_build/octave_cl_matrix.oct");
+autoload ("sigmoid",   "_build/octave_cl_matrix.oct");

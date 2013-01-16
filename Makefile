@@ -7,9 +7,9 @@ LIBS=OpenCL clAmdBlas octinterp octave cruft
 CFLAGS_TEST=-std=c++11 -g
 LIBS_TEST=$(LIBS) boost_unit_test_framework
 
-.PHONY: all test macro
+.PHONY: all test clean
 
-all: _build _build/octave_cl_matrix.oct cl_matrix.oct
+all: _build _build/octave_cl_matrix.oct kernels
 
 _build:
 	mkdir $@
@@ -17,17 +17,20 @@ _build:
 _build/%.o: src/%.cpp
 	$(CC) $(CFLAGS) $(INC_DIRS:%=-I%) $(LIB_DIRS:%=-L%) $(LIBS:%=-l%) -o $@ $^
 
-_build/octave_cl_matrix.oct: _build/octave_cl_matrix.o _build/ClMatrix.o _build/ClAmdBlasService.o
+_build/octave_cl_matrix.oct: _build/octave_cl_matrix.o _build/ClMatrix.o _build/ClService.o
 	$(CC) $(LDLAGS) -o $@ $^ $(LIB_DIRS:%=-L%) $(LIBS:%=-l%)
 
-cl_matrix.oct: _build/octave_cl_matrix.oct
-	ln -s _build/octave_cl_matrix.oct cl_matrix.oct
-
-_build/test: test/ClMatrixTest.cpp _build/ClMatrix.o _build/ClAmdBlasService.o
+_build/test: test/ClMatrixTest.cpp _build/ClMatrix.o _build/ClService.o
 	$(CC) $(CFLAGS_TEST) -o $@ $^ $(INC_DIRS:%=-I%) $(LIB_DIRS:%=-L%) $(LIBS_TEST:%=-l%)
+
+kernels: _build/compile_kernels src/kernels.cl
+	_build/compile_kernels
+
+_build/compile_kernels: src/compile_kernels.cpp src/ClService.cpp
+	$(CC) $(CFLAGS_TEST) -o $@ $^ $(INC_DIRS:%=-I%) $(LIB_DIRS:%=-L%) $(LIBS:%=-l%)
+
+test: _build/test kernels
+	_build/test --log_level=message
 
 clean:
 	rm _build/*
-
-test: _build/test
-	$^ --log_level=message

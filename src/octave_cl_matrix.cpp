@@ -3,7 +3,7 @@
 #include <octave/ov-re-mat.h>
 
 #include "octave_cl_matrix.hpp"
-#include "ClAmdBlasService.hpp"
+#include "ClService.hpp"
 
 using namespace std;
 
@@ -12,7 +12,7 @@ DEFINE_OV_TYPEID_FUNCTIONS_AND_DATA (octave_cl_matrix, "cl_matrix", "cl_matrix")
 
 static bool type_loaded = false;
 
-extern ClAmdBlasService clSrvc;
+extern ClService clSrvc;
 
 octave_cl_matrix::octave_cl_matrix()
     :matrix (1, 1)
@@ -60,7 +60,7 @@ dim_vector octave_cl_matrix::dims () const
 
 size_t octave_cl_matrix::byte_size () const
 {
-    return matrix.cols * matrix.rows * sizeof(double);
+    return matrix.byteSize ();
 }
 
 Matrix octave_cl_matrix::matrix_value (bool = false) const
@@ -96,7 +96,7 @@ Create OpenCL matrix                                                       \n\
         {
             if (!clSrvc.initialized)
             {
-                octave_stdout << "Error: unable to initialize clAmdBlas!\n";
+                octave_stdout << "Error: unable to initialize clService! " << clSrvc.statusMsg << "\n";
                 return octave_value_list();
             }
 
@@ -118,7 +118,7 @@ Create OpenCL matrix                                                       \n\
             {
                 return octave_value (new octave_cl_matrix (m));
             }
-            catch (std::exception& e)
+            catch (exception& e)
             {
                 octave_stdout << "Error: " << e.what() << "\n";
             }

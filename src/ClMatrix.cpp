@@ -6,13 +6,13 @@
 #include <cassert>
 
 #include "ClMatrix.hpp"
-#include "ClAmdBlasService.hpp"
+#include "ClService.hpp"
 
 #include <clAmdBlas.h>
 
 using namespace std;
 
-extern ClAmdBlasService clSrvc;
+extern ClService clSrvc;
 
 cl_mem createEmpty (int rows, int cols)
 {
@@ -54,9 +54,14 @@ ClMatrix::~ClMatrix ()
 
 void ClMatrix::copyTo (double* data) const
 {
-    cl_int err = clEnqueueReadBuffer (clSrvc.queue (), mem, CL_TRUE, 0, rows * cols * sizeof (double), data, 0, NULL, NULL);
+    cl_int err = clEnqueueReadBuffer (clSrvc.queue (), mem, CL_TRUE, 0, byteSize (), data, 0, NULL, NULL);
     if (CL_SUCCESS != err)
         throw runtime_error {"Couldn't read from the cl buffer object (" + to_string (err) + ")"};
+}
+
+size_t ClMatrix::byteSize () const
+{
+    return rows * cols * sizeof (double);
 }
 
 ClMatrix ClMatrix::operator* (const ClMatrix& other) const
@@ -79,6 +84,17 @@ ClMatrix ClMatrix::operator* (const ClMatrix& other) const
 ClMatrix ClMatrix::sigmoid () const
 {
     ClMatrix newMatrix {rows, cols};
+
+    try
+    {
+        clSrvc.sigmoid.setArg (0, mem);
+        clSrvc.sigmoid.setArg (1, newMatrix.mem);
+        clSrvc.queue.enqueueNDRangeKernel (clSrvc.sigmoid, 0, rows * cols);
+    }
+    catch (cl::Error& e)
+    {
+        cout << "ERROR=" << e.err () << "\n";
+    }
 
     return newMatrix;
 }
