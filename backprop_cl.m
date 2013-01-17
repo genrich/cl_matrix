@@ -10,9 +10,8 @@ function model = backprop_cl (hiddenUnits, inputs, targets, trainIterations)
     y0 = cl_matrix (inputs);
 
     for i = 1:trainIterations
-        y1 = w1 * y0;
-        % y1 = sigmoid (w1 * y0);
-        % y2 = sigmoid (w2 * y1);
+        y1 = sigmoid (w1 * y0);
+        y2 = sigmoid (w2 * y1);
 
         % 1 / (2 * m) * sum (sum ( (t - y2) .^ 2));
 

@@ -72,7 +72,15 @@ Matrix octave_cl_matrix::matrix_value (bool = false) const
 
 static octave_cl_matrix* mul (const ClMatrix& mat1, const ClMatrix& mat2)
 {
-    return new octave_cl_matrix (mat1 * mat2);
+    try
+    {
+        return new octave_cl_matrix {mat1 * mat2};
+    }
+    catch (exception& e)
+    {
+        octave_stdout << "Error: " << e.what() << "\n";
+    }
+    return new octave_cl_matrix {};
 }
 
 DEFBINOP_FN (mul, cl_matrix, cl_matrix, mul)
@@ -97,7 +105,7 @@ Create OpenCL matrix                                                       \n\
             if (!clSrvc.initialized)
             {
                 octave_stdout << "Error: unable to initialize clService! " << clSrvc.statusMsg << "\n";
-                return octave_value_list();
+                return {};
             }
 
             octave_cl_matrix::register_type ();
@@ -116,7 +124,7 @@ Create OpenCL matrix                                                       \n\
         {
             try
             {
-                return octave_value (new octave_cl_matrix (m));
+                return octave_value {new octave_cl_matrix {m}};
             }
             catch (exception& e)
             {
@@ -128,7 +136,7 @@ Create OpenCL matrix                                                       \n\
     {
         print_usage ();
     }
-    return octave_value_list ();
+    return {};
 }
 
 DEFUN_DLD(sigmoid, args, nargout,
@@ -149,11 +157,19 @@ Apply @code{sigmoid} function to @var{cl_matrix}                           \n\
     int nargin = args.length ();
     if (nargin == 1 && octave_cl_matrix::static_type_id () == args (0).type_id ())
     {
-        octave_stdout << "unimplemented\n";
+        try
+        {
+            const octave_cl_matrix& m = dynamic_cast<const octave_cl_matrix&> (args (0).get_rep ());
+            return octave_value {new octave_cl_matrix {m.cl_matrix_value ().sigmoid ()}};
+        }
+        catch (exception& e)
+        {
+            octave_stdout << "Error: " << e.what() << "\n";
+        }
     }
     else
     {
         print_usage ();
     }
-    return octave_value_list ();
+    return {};
 }
