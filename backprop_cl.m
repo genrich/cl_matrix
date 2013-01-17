@@ -30,6 +30,5 @@ function model = backprop_cl(hiddenUnits, inputs, targets, trainIterations)
 end
 
 function w = initWeights(in, out)
-    e = 0.15;
-    w = e * 2 * rand(in, out) - e;
+    w = reshape (0.1 * sin (1:in * out), in, out);
 end
