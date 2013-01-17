@@ -40,7 +40,7 @@ const ClMatrix& octave_cl_matrix::cl_matrix_value() const
 
 void octave_cl_matrix::print (std::ostream& os, bool pr_as_read_syntax) const
 {
-    os << "cl_matrix(" << matrix.rows << ", " << matrix.cols << "); view content: double(cl_matrix_value)\n";
+    os << "cl_matrix (" << matrix.rows << ", " << matrix.cols << ");  content: double (CL_MATRIX)\n";
 }
 
 bool octave_cl_matrix::is_constant () const
