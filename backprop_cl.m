@@ -15,6 +15,8 @@ function model = backprop_cl (hiddenUnits, inputs, targets, trainIterations)
 
         % 1 / (2 * m) * sum (sum ( (t - y2) .^ 2));
 
+        d_E_z2 = sigmoid (y2) .* y2;
+
         % d_E_z2 = sigmoid (y2) .* (1 - sigmoid (y2)) .* (y2 - t);
     %     d_E_z1 = sigmoid (y1) .* (1 - sigmoid (y1)) .* (w2' * d_E_z2);
 

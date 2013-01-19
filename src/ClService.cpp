@@ -89,6 +89,7 @@ ClService::ClService ()
     :errCode {0}, message {""},
     device {clDevice ()}, devices {vector<cl::Device> {device}}, ctx {devices}, queue {ctx, device},
     program {loadProgram ("kernels", errCode, message)},
+    el_mul  {loadKernel (program, "el_mul",  errCode, message)},
     sigmoid {loadKernel (program, "sigmoid", errCode, message)},
     initialized {initialize (errCode, message)},
     statusMsg   {message}

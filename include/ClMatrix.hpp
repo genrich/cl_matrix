@@ -12,6 +12,8 @@ public:
     const int rows;
     const int cols;
 
+    ClMatrix mul    (const ClMatrix&) const;
+    ClMatrix el_mul (const ClMatrix&) const;
 public:
               ClMatrix  (const int rows, const int cols);
               ClMatrix  (const int rows, const int cols, const double* data);

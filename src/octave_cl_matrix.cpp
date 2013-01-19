@@ -14,10 +14,9 @@ static bool type_loaded = false;
 
 extern ClService clSrvc;
 
-void gripe_cl_matrix_error (string msg)
+void report_error (string msg)
 {
-    octave_stdout << "cl_matrix: " << msg << "\n";
-    gripe_library_execution_error ();
+    (*current_liboctave_error_handler) (msg.c_str ());
 }
 
 octave_cl_matrix::octave_cl_matrix()
@@ -84,12 +83,26 @@ static octave_cl_matrix* mul (const ClMatrix& mat1, const ClMatrix& mat2)
     }
     catch (exception& e)
     {
-        gripe_cl_matrix_error (e.what ());
+        report_error (e.what ());
+        return nullptr;
     }
-    return new octave_cl_matrix {};
 }
 
-DEFBINOP_FN (mul, cl_matrix, cl_matrix, mul)
+static octave_cl_matrix* el_mul (const ClMatrix& mat1, const ClMatrix& mat2)
+{
+    try
+    {
+        return new octave_cl_matrix {mat1.el_mul (mat2)};
+    }
+    catch (exception& e)
+    {
+        report_error (e.what ());
+        return nullptr;
+    }
+}
+
+DEFBINOP_FN (mul,    cl_matrix, cl_matrix, mul)
+DEFBINOP_FN (el_mul, cl_matrix, cl_matrix, el_mul)
 
 DEFCONV(cl_matrix_to_matrix, octave_cl_matrix, octave_matrix)
 {
@@ -110,14 +123,15 @@ Create OpenCL matrix                                                       \n\
         {
             if (!clSrvc.initialized)
             {
-                gripe_cl_matrix_error ("Unable to initialize! " + clSrvc.statusMsg);
+                report_error ("Unable to initialize! " + clSrvc.statusMsg);
                 return {};
             }
 
             octave_cl_matrix::register_type ();
             mlock ();
 
-            INSTALL_BINOP (op_mul, octave_cl_matrix, octave_cl_matrix, mul);
+            INSTALL_BINOP (op_mul,    octave_cl_matrix, octave_cl_matrix, mul);
+            INSTALL_BINOP (op_el_mul, octave_cl_matrix, octave_cl_matrix, el_mul);
 
             INSTALL_CONVOP (octave_cl_matrix, octave_matrix, cl_matrix_to_matrix);
 
@@ -134,7 +148,7 @@ Create OpenCL matrix                                                       \n\
             }
             catch (exception& e)
             {
-                gripe_cl_matrix_error (e.what ());
+                report_error (e.what ());
             }
         }
     }
@@ -170,7 +184,7 @@ Apply @code{sigmoid} function to @var{cl_matrix}                           \n\
         }
         catch (exception& e)
         {
-            gripe_cl_matrix_error (e.what ());
+            report_error (e.what ());
         }
     }
     else

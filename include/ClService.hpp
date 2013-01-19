@@ -15,6 +15,7 @@ public:
     cl::CommandQueue              queue;
 
     const cl::Program program;
+    cl::Kernel        el_mul;
     cl::Kernel        sigmoid;
 
     const bool        initialized;

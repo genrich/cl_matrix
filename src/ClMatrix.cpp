@@ -64,37 +64,51 @@ size_t ClMatrix::byteSize () const
     return rows * cols * sizeof (double);
 }
 
-ClMatrix ClMatrix::operator* (const ClMatrix& other) const
+ClMatrix ClMatrix::mul (const ClMatrix& other) const
 {
-    ClMatrix newMatrix {rows, other.cols};
+    if (cols != other.rows) throw runtime_error {"Matrix dimensions mismatch for multiplication"};
+
+    ClMatrix result {rows, other.cols};
 
     std::vector<cl::Event> event (1);
     clAmdBlasStatus status = clAmdBlasDgemmEx (clAmdBlasColumnMajor, clAmdBlasNoTrans, clAmdBlasNoTrans,
             rows, other.cols, cols, 1/*alpha*/,
             mem, 0/*offset*/, rows/*lda*/,
             other.mem, 0/*offset*/, other.rows/*ldb*/,
-            0/*beta*/, newMatrix.mem, 0/*offset*/, rows/*ldc*/,
+            0/*beta*/, result.mem, 0/*offset*/, rows/*ldc*/,
             1/*commandQueues*/, &clSrvc.queue (), 0/*waitList*/, NULL, &event[0] ());
     if (clAmdBlasSuccess != status)
         throw runtime_error {clSrvc.errMsg (status)};
 
-    return newMatrix;
+    return result;
+}
+
+ClMatrix ClMatrix::el_mul (const ClMatrix& other) const
+{
+    if (rows != other.rows || cols != other.cols) throw runtime_error {"Matrix dimensions mismatch for element multiplication"};
+
+    ClMatrix result {rows, cols};
+
+    clSrvc.el_mul.setArg (0, mem);
+    clSrvc.el_mul.setArg (1, other.mem);
+    clSrvc.el_mul.setArg (2, result.mem);
+    clSrvc.queue.enqueueNDRangeKernel (clSrvc.el_mul, 0, rows * cols);
+
+    return result;
+}
+
+ClMatrix ClMatrix::operator* (const ClMatrix& other) const
+{
+    return mul (other);
 }
 
 ClMatrix ClMatrix::sigmoid () const
 {
-    ClMatrix newMatrix {rows, cols};
+    ClMatrix result {rows, cols};
 
-    try
-    {
-        clSrvc.sigmoid.setArg (0, mem);
-        clSrvc.sigmoid.setArg (1, newMatrix.mem);
-        clSrvc.queue.enqueueNDRangeKernel (clSrvc.sigmoid, 0, rows * cols);
-    }
-    catch (cl::Error& e)
-    {
-        cout << "ERROR=" << e.err () << "\n";
-    }
+    clSrvc.sigmoid.setArg (0, mem);
+    clSrvc.sigmoid.setArg (1, result.mem);
+    clSrvc.queue.enqueueNDRangeKernel (clSrvc.sigmoid, 0, rows * cols);
 
-    return newMatrix;
+    return result;
 }
