@@ -14,6 +14,12 @@ static bool type_loaded = false;
 
 extern ClService clSrvc;
 
+void gripe_cl_matrix_error (string msg)
+{
+    octave_stdout << "cl_matrix: " << msg << "\n";
+    gripe_library_execution_error ();
+}
+
 octave_cl_matrix::octave_cl_matrix()
     :matrix (1, 1)
 {
@@ -78,7 +84,7 @@ static octave_cl_matrix* mul (const ClMatrix& mat1, const ClMatrix& mat2)
     }
     catch (exception& e)
     {
-        octave_stdout << "Error: " << e.what() << "\n";
+        gripe_cl_matrix_error (e.what ());
     }
     return new octave_cl_matrix {};
 }
@@ -104,7 +110,7 @@ Create OpenCL matrix                                                       \n\
         {
             if (!clSrvc.initialized)
             {
-                octave_stdout << "Error: unable to initialize clService! " << clSrvc.statusMsg << "\n";
+                gripe_cl_matrix_error ("Unable to initialize! " + clSrvc.statusMsg);
                 return {};
             }
 
@@ -128,7 +134,7 @@ Create OpenCL matrix                                                       \n\
             }
             catch (exception& e)
             {
-                octave_stdout << "Error: " << e.what() << "\n";
+                gripe_cl_matrix_error (e.what ());
             }
         }
     }
@@ -164,7 +170,7 @@ Apply @code{sigmoid} function to @var{cl_matrix}                           \n\
         }
         catch (exception& e)
         {
-            octave_stdout << "Error: " << e.what() << "\n";
+            gripe_cl_matrix_error (e.what ());
         }
     }
     else

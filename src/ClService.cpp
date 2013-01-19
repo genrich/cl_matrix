@@ -30,6 +30,7 @@ static cl::Program loadProgram (string programName, int& errCode, string& messag
     try
     {
         ifstream kernelsFile {programName, ios::binary};
+        if (!kernelsFile.is_open ()) throw runtime_error {"No compiled 'kernels' file found."};
         vector<char> buffer {istreambuf_iterator<char> {kernelsFile}, istreambuf_iterator<char> {}};
         cl::Program::Binaries binaries {make_pair (buffer.data (), buffer.size ())};
         cl::Program program {clSrvc.ctx, clSrvc.devices, binaries};
@@ -66,7 +67,7 @@ static cl::Kernel loadKernel (const cl::Program& program, string kernelName, int
     return {};
 }
 
-bool initClAmdBlas (int& errCode, string& message)
+bool initialize (int& errCode, string& message)
 {
     if (0 != errCode)
         return false;
@@ -89,7 +90,8 @@ ClService::ClService ()
     device {clDevice ()}, devices {vector<cl::Device> {device}}, ctx {devices}, queue {ctx, device},
     program {loadProgram ("kernels", errCode, message)},
     sigmoid {loadKernel (program, "sigmoid", errCode, message)},
-    initialized {initClAmdBlas (errCode, message)}
+    initialized {initialize (errCode, message)},
+    statusMsg   {message}
 {
 }
 
