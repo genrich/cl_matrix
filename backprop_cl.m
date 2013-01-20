@@ -3,8 +3,8 @@ function model = backprop_cl (hiddenUnits, inputs, targets, trainIterations)
     outputUnits = size (targets, 1);
     samples     = size (inputs,  2);
 
-    t  = targets;
     m  = samples;
+    t  = cl_matrix (targets);
     w1 = cl_matrix (initWeights (hiddenUnits, inputUnits));
     w2 = cl_matrix (initWeights (outputUnits, hiddenUnits));
     y0 = cl_matrix (inputs);
@@ -15,10 +15,8 @@ function model = backprop_cl (hiddenUnits, inputs, targets, trainIterations)
 
         % 1 / (2 * m) * sum (sum ( (t - y2) .^ 2));
 
-        d_E_z2 = sigmoid (y2) .* y2;
-
-        % d_E_z2 = sigmoid (y2) .* (1 - sigmoid (y2)) .* (y2 - t);
-    %     d_E_z1 = sigmoid (y1) .* (1 - sigmoid (y1)) .* (w2' * d_E_z2);
+        d_E_z2 = sigmoid (y2) .* (1 - sigmoid (y2)) .* (y2 - t);
+        % d_E_z1 = sigmoid (y1) .* (1 - sigmoid (y1)) .* (w2' * d_E_z2);
 
     %     d_E_w2 = d_E_z2 * y1' / m;
     %     d_E_w1 = d_E_z1 * y0' / m;

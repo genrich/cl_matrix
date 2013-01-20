@@ -64,6 +64,21 @@ size_t ClMatrix::byteSize () const
     return rows * cols * sizeof (double);
 }
 
+ClMatrix ClMatrix::add (const ClMatrix& other) const
+{
+    if (rows != other.rows || cols != other.cols) throw runtime_error {"Matrix dimensions mismatch for element addition"};
+
+    ClMatrix result {rows, cols};
+
+    cl::Kernel& kernel = clSrvc.add;
+    kernel.setArg (0, mem);
+    kernel.setArg (1, other.mem);
+    kernel.setArg (2, result.mem);
+    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+
+    return result;
+}
+
 ClMatrix ClMatrix::add (const double scalar) const
 {
     ClMatrix result {rows, cols};
@@ -71,6 +86,21 @@ ClMatrix ClMatrix::add (const double scalar) const
     cl::Kernel& kernel = clSrvc.add_scalar;
     kernel.setArg (0, mem);
     kernel.setArg (1, scalar);
+    kernel.setArg (2, result.mem);
+    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+
+    return result;
+}
+
+ClMatrix ClMatrix::sub (const ClMatrix& other) const
+{
+    if (rows != other.rows || cols != other.cols) throw runtime_error {"Matrix dimensions mismatch for element subtraction"};
+
+    ClMatrix result {rows, cols};
+
+    cl::Kernel& kernel = clSrvc.sub;
+    kernel.setArg (0, mem);
+    kernel.setArg (1, other.mem);
     kernel.setArg (2, result.mem);
     clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
 
@@ -152,6 +182,21 @@ ClMatrix ClMatrix::el_mul (const ClMatrix& other) const
     ClMatrix result {rows, cols};
 
     cl::Kernel& kernel = clSrvc.el_mul;
+    kernel.setArg (0, mem);
+    kernel.setArg (1, other.mem);
+    kernel.setArg (2, result.mem);
+    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+
+    return result;
+}
+
+ClMatrix ClMatrix::el_div (const ClMatrix& other) const
+{
+    if (rows != other.rows || cols != other.cols) throw runtime_error {"Matrix dimensions mismatch for element division"};
+
+    ClMatrix result {rows, cols};
+
+    cl::Kernel& kernel = clSrvc.el_div;
     kernel.setArg (0, mem);
     kernel.setArg (1, other.mem);
     kernel.setArg (2, result.mem);
