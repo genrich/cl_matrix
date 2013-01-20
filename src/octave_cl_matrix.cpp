@@ -1,6 +1,7 @@
 #include <octave/config.h>
 #include <octave/ops.h>
 #include <octave/ov-re-mat.h>
+#include <octave/ov-scalar.h>
 
 #include "octave_cl_matrix.hpp"
 #include "ClService.hpp"
@@ -13,6 +14,20 @@ DEFINE_OV_TYPEID_FUNCTIONS_AND_DATA (octave_cl_matrix, "cl_matrix", "cl_matrix")
 static bool type_loaded = false;
 
 extern ClService clSrvc;
+
+#define CL_MATRIX_BINOP(fn, method, a1, a2)               \
+    static octave_cl_matrix* fn (const a1, const a2)      \
+    {                                                     \
+        try                                               \
+        {                                                 \
+            return new octave_cl_matrix {mat.method (x)}; \
+        }                                                 \
+        catch (exception& e)                              \
+        {                                                 \
+            report_error (e.what ());                     \
+            return nullptr;                               \
+        }                                                 \
+    }
 
 void report_error (string msg)
 {
@@ -75,11 +90,21 @@ Matrix octave_cl_matrix::matrix_value (bool = false) const
   return retval;
 }
 
-static octave_cl_matrix* mul (const ClMatrix& mat1, const ClMatrix& mat2)
+CL_MATRIX_BINOP (add_mat_scalar, add,        ClMatrix& mat, double x)
+CL_MATRIX_BINOP (add_scalar_mat, add,        double x,      ClMatrix& mat)
+CL_MATRIX_BINOP (sub_mat_scalar, sub,        ClMatrix& mat, double x)
+CL_MATRIX_BINOP (sub_scalar_mat, subtrahend, double x,      ClMatrix& mat)
+CL_MATRIX_BINOP (mul_mat_scalar, mul,        ClMatrix& mat, double x)
+CL_MATRIX_BINOP (mul_scalar_mat, mul,        double x,      ClMatrix& mat)
+
+static octave_cl_matrix* div_mat_scalar (const ClMatrix& mat, const double x)
 {
+    if (x == 0)
+        gripe_divide_by_zero ();
+
     try
     {
-        return new octave_cl_matrix {mat1 * mat2};
+        return new octave_cl_matrix {mat.div (x)};
     }
     catch (exception& e)
     {
@@ -88,21 +113,20 @@ static octave_cl_matrix* mul (const ClMatrix& mat1, const ClMatrix& mat2)
     }
 }
 
-static octave_cl_matrix* el_mul (const ClMatrix& mat1, const ClMatrix& mat2)
-{
-    try
-    {
-        return new octave_cl_matrix {mat1.el_mul (mat2)};
-    }
-    catch (exception& e)
-    {
-        report_error (e.what ());
-        return nullptr;
-    }
-}
+CL_MATRIX_BINOP (div_scalar_mat, divisor, double x,      ClMatrix& mat)
+CL_MATRIX_BINOP (el_mul,         el_mul,  ClMatrix& mat, ClMatrix& x)
+CL_MATRIX_BINOP (mul,            mul,     ClMatrix& mat, ClMatrix& x)
 
-DEFBINOP_FN (mul,    cl_matrix, cl_matrix, mul)
-DEFBINOP_FN (el_mul, cl_matrix, cl_matrix, el_mul)
+DEFBINOP_FN (add_mat_scalar, cl_matrix, scalar,    add_mat_scalar)
+DEFBINOP_FN (add_scalar_mat, scalar,    cl_matrix, add_scalar_mat)
+DEFBINOP_FN (sub_mat_scalar, cl_matrix, scalar,    sub_mat_scalar)
+DEFBINOP_FN (sub_scalar_mat, scalar,    cl_matrix, sub_scalar_mat)
+DEFBINOP_FN (mul_mat_scalar, cl_matrix, scalar,    mul_mat_scalar)
+DEFBINOP_FN (mul_scalar_mat, scalar,    cl_matrix, mul_scalar_mat)
+DEFBINOP_FN (div_mat_scalar, cl_matrix, scalar,    div_mat_scalar)
+DEFBINOP_FN (div_scalar_mat, scalar,    cl_matrix, div_scalar_mat)
+DEFBINOP_FN (mul,            cl_matrix, cl_matrix, mul)
+DEFBINOP_FN (el_mul,         cl_matrix, cl_matrix, el_mul)
 
 DEFCONV(cl_matrix_to_matrix, octave_cl_matrix, octave_matrix)
 {
@@ -130,6 +154,14 @@ Create OpenCL matrix                                                       \n\
             octave_cl_matrix::register_type ();
             mlock ();
 
+            INSTALL_BINOP (op_add,    octave_cl_matrix, octave_scalar,    add_mat_scalar);
+            INSTALL_BINOP (op_add,    octave_scalar,    octave_cl_matrix, add_scalar_mat);
+            INSTALL_BINOP (op_sub,    octave_cl_matrix, octave_scalar,    sub_mat_scalar);
+            INSTALL_BINOP (op_sub,    octave_scalar,    octave_cl_matrix, sub_scalar_mat);
+            INSTALL_BINOP (op_mul,    octave_cl_matrix, octave_scalar,    mul_mat_scalar);
+            INSTALL_BINOP (op_mul,    octave_scalar,    octave_cl_matrix, mul_scalar_mat);
+            INSTALL_BINOP (op_div,    octave_cl_matrix, octave_scalar,    div_mat_scalar);
+            INSTALL_BINOP (op_div,    octave_scalar,    octave_cl_matrix, div_scalar_mat);
             INSTALL_BINOP (op_mul,    octave_cl_matrix, octave_cl_matrix, mul);
             INSTALL_BINOP (op_el_mul, octave_cl_matrix, octave_cl_matrix, el_mul);
 

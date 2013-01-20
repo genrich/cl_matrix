@@ -15,6 +15,10 @@ public:
     cl::CommandQueue              queue;
 
     const cl::Program program;
+    cl::Kernel        add_scalar;
+    cl::Kernel        scalar_sub;
+    cl::Kernel        mul_scalar;
+    cl::Kernel        scalar_div;
     cl::Kernel        el_mul;
     cl::Kernel        sigmoid;
 

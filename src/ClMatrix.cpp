@@ -64,6 +64,68 @@ size_t ClMatrix::byteSize () const
     return rows * cols * sizeof (double);
 }
 
+ClMatrix ClMatrix::add (const double scalar) const
+{
+    ClMatrix result {rows, cols};
+
+    cl::Kernel& kernel = clSrvc.add_scalar;
+    kernel.setArg (0, mem);
+    kernel.setArg (1, scalar);
+    kernel.setArg (2, result.mem);
+    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+
+    return result;
+}
+
+ClMatrix ClMatrix::sub (const double scalar) const
+{
+    return add (-scalar);
+}
+
+ClMatrix ClMatrix::subtrahend (const double minuend) const
+{
+    ClMatrix result {rows, cols};
+
+    cl::Kernel& kernel = clSrvc.scalar_sub;
+    kernel.setArg (0, minuend);
+    kernel.setArg (1, mem);
+    kernel.setArg (2, result.mem);
+    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+
+    return result;
+}
+
+ClMatrix ClMatrix::mul (const double scalar) const
+{
+    ClMatrix result {rows, cols};
+
+    cl::Kernel& kernel = clSrvc.mul_scalar;
+    kernel.setArg (0, mem);
+    kernel.setArg (1, scalar);
+    kernel.setArg (2, result.mem);
+    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+
+    return result;
+}
+
+ClMatrix ClMatrix::div (const double scalar) const
+{
+    return mul (1 / scalar);
+}
+
+ClMatrix ClMatrix::divisor (const double dividend) const
+{
+    ClMatrix result {rows, cols};
+
+    cl::Kernel& kernel = clSrvc.scalar_div;
+    kernel.setArg (0, dividend);
+    kernel.setArg (1, mem);
+    kernel.setArg (2, result.mem);
+    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+
+    return result;
+}
+
 ClMatrix ClMatrix::mul (const ClMatrix& other) const
 {
     if (cols != other.rows) throw runtime_error {"Matrix dimensions mismatch for multiplication"};
@@ -89,26 +151,23 @@ ClMatrix ClMatrix::el_mul (const ClMatrix& other) const
 
     ClMatrix result {rows, cols};
 
-    clSrvc.el_mul.setArg (0, mem);
-    clSrvc.el_mul.setArg (1, other.mem);
-    clSrvc.el_mul.setArg (2, result.mem);
-    clSrvc.queue.enqueueNDRangeKernel (clSrvc.el_mul, 0, rows * cols);
+    cl::Kernel& kernel = clSrvc.el_mul;
+    kernel.setArg (0, mem);
+    kernel.setArg (1, other.mem);
+    kernel.setArg (2, result.mem);
+    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
 
     return result;
-}
-
-ClMatrix ClMatrix::operator* (const ClMatrix& other) const
-{
-    return mul (other);
 }
 
 ClMatrix ClMatrix::sigmoid () const
 {
     ClMatrix result {rows, cols};
 
-    clSrvc.sigmoid.setArg (0, mem);
-    clSrvc.sigmoid.setArg (1, result.mem);
-    clSrvc.queue.enqueueNDRangeKernel (clSrvc.sigmoid, 0, rows * cols);
+    cl::Kernel& kernel = clSrvc.sigmoid;
+    kernel.setArg (0, mem);
+    kernel.setArg (1, result.mem);
+    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
 
     return result;
 }
