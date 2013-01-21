@@ -89,6 +89,30 @@ Matrix octave_cl_matrix::matrix_value (bool = false) const
   return retval;
 }
 
+static octave_cl_matrix* uminus (const ClMatrix& mat)
+{
+    try
+    {
+        return new octave_cl_matrix {mat.uminus ()};
+    }
+    catch (exception& e)
+    {
+        report_error (e.what ());
+    }
+}
+
+static octave_cl_matrix* transpose (const ClMatrix& mat)
+{
+    try
+    {
+        return new octave_cl_matrix {mat.transpose ()};
+    }
+    catch (exception& e)
+    {
+        report_error (e.what ());
+    }
+}
+
 CL_MATRIX_BINOP (add,            add,        ClMatrix& mat, ClMatrix& x)
 CL_MATRIX_BINOP (add_mat_scalar, add,        ClMatrix& mat, double x)
 CL_MATRIX_BINOP (add_scalar_mat, add,        double x,      ClMatrix& mat)
@@ -119,6 +143,9 @@ static octave_cl_matrix* div_mat_scalar (const ClMatrix& mat, const double x)
 
 CL_MATRIX_BINOP (div_scalar_mat, divisor, double x,      ClMatrix& mat)
 CL_MATRIX_BINOP (el_div,         el_div,  ClMatrix& mat, ClMatrix& x)
+
+DEFUNOP_FN (uminus,    cl_matrix, uminus)
+DEFUNOP_FN (transpose, cl_matrix, transpose)
 
 DEFBINOP_FN (add,            cl_matrix, cl_matrix, add)
 DEFBINOP_FN (add_mat_scalar, cl_matrix, scalar,    add_mat_scalar)
@@ -161,6 +188,10 @@ Create OpenCL matrix                                                       \n\
 
             octave_cl_matrix::register_type ();
             mlock ();
+
+            INSTALL_UNOP (op_uminus,    octave_cl_matrix, uminus);
+            INSTALL_UNOP (op_transpose, octave_cl_matrix, transpose);
+            INSTALL_UNOP (op_hermitian, octave_cl_matrix, transpose);
 
             INSTALL_BINOP (op_add,       octave_cl_matrix, octave_cl_matrix, add);
             INSTALL_BINOP (op_add,       octave_cl_matrix, octave_scalar,    add_mat_scalar);

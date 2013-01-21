@@ -89,6 +89,8 @@ ClService::ClService ()
     :errCode {0}, message {""},
     device {clDevice ()}, devices {vector<cl::Device> {device}}, ctx {devices}, queue {ctx, device},
     program {loadProgram ("kernels", errCode, message)},
+    uminus      {loadKernel (program, "uminus",     errCode, message)},
+    transpose   {loadKernel (program, "transpose",  errCode, message)},
     add         {loadKernel (program, "add",        errCode, message)},
     add_scalar  {loadKernel (program, "add_scalar", errCode, message)},
     sub         {loadKernel (program, "sub",        errCode, message)},

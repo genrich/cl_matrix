@@ -15,6 +15,8 @@ public:
     cl::CommandQueue              queue;
 
     const cl::Program program;
+    cl::Kernel        uminus;
+    cl::Kernel        transpose;
     cl::Kernel        add;
     cl::Kernel        add_scalar;
     cl::Kernel        sub;

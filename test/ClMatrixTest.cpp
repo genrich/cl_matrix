@@ -319,6 +319,30 @@ BOOST_AUTO_TEST_CASE (el_div_ErrorTest)
     BOOST_CHECK_THROW (mat1.el_div (mat2), runtime_error);
 }
 
+BOOST_AUTO_TEST_CASE (uminus_Test)
+{
+    double data[] = {2, INFINITY, 0, 16},
+           result[4],
+           expectedResult[] = {-2, -INFINITY, 0, -16};
+    ClMatrix mat {2, 2, data};
+
+    mat.uminus ().copyTo (result);
+
+    BOOST_CHECK_EQUAL_COLLECTIONS (&result[0], &result[4], &expectedResult[0], &expectedResult[4]);
+}
+
+BOOST_AUTO_TEST_CASE (transpose_Test)
+{
+    double data[] = {1, 2, 3, 4},
+           result[4],
+           expectedResult[] = {1, 3, 2, 4};
+    ClMatrix mat {2, 2, data};
+
+    mat.transpose ().copyTo (result);
+
+    BOOST_CHECK_EQUAL_COLLECTIONS (&result[0], &result[4], &expectedResult[0], &expectedResult[4]);
+}
+
 BOOST_AUTO_TEST_CASE (sigmoid_Test)
 {
     constexpr int size = 4;

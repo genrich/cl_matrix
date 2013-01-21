@@ -12,6 +12,8 @@ public:
     const int rows;
     const int cols;
 
+    ClMatrix uminus     ()                const;
+    ClMatrix transpose  ()                const;
     ClMatrix add        (const ClMatrix&) const;
     ClMatrix add        (const double)    const;
     ClMatrix sub        (const ClMatrix&) const;

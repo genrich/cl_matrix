@@ -64,6 +64,31 @@ size_t ClMatrix::byteSize () const
     return rows * cols * sizeof (double);
 }
 
+ClMatrix ClMatrix::uminus () const
+{
+    ClMatrix result {rows, cols};
+
+    cl::Kernel& kernel = clSrvc.uminus;
+    kernel.setArg (0, mem);
+    kernel.setArg (1, result.mem);
+    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+
+    return result;
+}
+
+ClMatrix ClMatrix::transpose () const
+{
+    ClMatrix result {cols, rows};
+
+    cl::Kernel& kernel = clSrvc.transpose;
+    kernel.setArg (0, mem);
+    kernel.setArg (1, rows);
+    kernel.setArg (2, cols);
+    kernel.setArg (3, result.mem);
+    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+    return result;
+}
+
 ClMatrix ClMatrix::add (const ClMatrix& other) const
 {
     if (rows != other.rows || cols != other.cols) throw runtime_error {"Matrix dimensions mismatch for element addition"};
