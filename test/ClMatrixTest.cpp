@@ -79,6 +79,81 @@ BOOST_AUTO_TEST_CASE (mul_ErrorTest)
     BOOST_CHECK_THROW (mat1.mul (mat2), runtime_error);
 }
 
+BOOST_AUTO_TEST_CASE (trans_mul_Test)
+{
+    double data1[] = {1, 2, 3, 4},
+           data2[] = {5, 6, 7, 8},
+           result[4],
+           expectedResult[] = {17, 39, 23, 53};
+    ClMatrix mat1 {2, 2, data1},
+             mat2 {2, 2, data2};
+
+    ClMatrix mat = mat1.trans_mul (mat2);
+    mat.copyTo (result);
+
+    BOOST_CHECK_EQUAL_COLLECTIONS (&result[0], &result[4], &expectedResult[0], &expectedResult[4]);
+}
+
+BOOST_AUTO_TEST_CASE (trans_mul_VectorsTest)
+{
+    double data1[] = {1, 2},
+           data2[] = {3, 4},
+           result[4],
+           expectedResult[] = {3, 6, 4, 8};
+    ClMatrix mat1 {1, 2, data1},
+             mat2 {1, 2, data2};
+
+    ClMatrix mat = mat1.trans_mul (mat2);
+    mat.copyTo (result);
+
+    BOOST_CHECK_EQUAL_COLLECTIONS (&result[0], &result[4], &expectedResult[0], &expectedResult[4]);
+}
+
+BOOST_AUTO_TEST_CASE (mul_trans_Test)
+{
+    double data1[] = {1, 2, 3, 4},
+           data2[] = {5, 6, 7, 8},
+           result[4],
+           expectedResult[] = {26, 38, 30, 44};
+    ClMatrix mat1 {2, 2, data1},
+             mat2 {2, 2, data2};
+
+    ClMatrix mat = mat1.mul_trans (mat2);
+    mat.copyTo (result);
+
+    BOOST_CHECK_EQUAL_COLLECTIONS (&result[0], &result[4], &expectedResult[0], &expectedResult[4]);
+}
+
+BOOST_AUTO_TEST_CASE (mul_trans_Vectors1Test)
+{
+    double data1[] = {1, 2},
+           data2[] = {3, 4},
+           result[1],
+           expectedResult[] = {11};
+    ClMatrix mat1 {1, 2, data1},
+             mat2 {1, 2, data2};
+
+    ClMatrix mat = mat1.mul_trans (mat2);
+    mat.copyTo (result);
+
+    BOOST_CHECK_EQUAL (result[0], expectedResult[0]);
+}
+
+BOOST_AUTO_TEST_CASE (mul_trans_Vectors2Test)
+{
+    double data1[] = {1, 2},
+           data2[] = {3, 4},
+           result[4],
+           expectedResult[] = {3, 6, 4, 8};
+    ClMatrix mat1 {2, 1, data1},
+             mat2 {2, 1, data2};
+
+    ClMatrix mat = mat1.mul_trans (mat2);
+    mat.copyTo (result);
+
+    BOOST_CHECK_EQUAL_COLLECTIONS (&result[0], &result[4], &expectedResult[0], &expectedResult[4]);
+}
+
 BOOST_AUTO_TEST_CASE (add_Test)
 {
     double data1[] = {1, 2, 3, 4},

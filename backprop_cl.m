@@ -16,13 +16,13 @@ function model = backprop_cl (hiddenUnits, inputs, targets, trainIterations)
         % 1 / (2 * m) * sum (sum ( (t - y2) .^ 2));
 
         d_E_z2 = sigmoid (y2) .* (1 - sigmoid (y2)) .* (y2 - t);
-        % d_E_z1 = sigmoid (y1) .* (1 - sigmoid (y1)) .* (w2' * d_E_z2);
+        d_E_z1 = sigmoid (y1) .* (1 - sigmoid (y1)) .* (w2' * d_E_z2);
 
-    %     d_E_w2 = d_E_z2 * y1' / m;
-    %     d_E_w1 = d_E_z1 * y0' / m;
+        d_E_w2 = d_E_z2 * y1' / m;
+        d_E_w1 = d_E_z1 * y0' / m;
 
-    %     w2 -= 0.5 * d_E_w2;
-    %     w1 -= 0.5 * d_E_w1;
+        w2 -= 0.5 * d_E_w2;
+        w1 -= 0.5 * d_E_w1;
     end
     model.hiddenWeights = double (w1);
     model.outputWeights = double (w2);

@@ -125,37 +125,6 @@ ClMatrix ClMatrix::subtrahend (const double minuend) const
     return result;
 }
 
-ClMatrix ClMatrix::mul (const double scalar) const
-{
-    ClMatrix result {rows, cols};
-
-    cl::Kernel& kernel = clSrvc.mul_scalar;
-    kernel.setArg (0, mem);
-    kernel.setArg (1, scalar);
-    kernel.setArg (2, result.mem);
-    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
-
-    return result;
-}
-
-ClMatrix ClMatrix::div (const double scalar) const
-{
-    return mul (1 / scalar);
-}
-
-ClMatrix ClMatrix::divisor (const double dividend) const
-{
-    ClMatrix result {rows, cols};
-
-    cl::Kernel& kernel = clSrvc.scalar_div;
-    kernel.setArg (0, dividend);
-    kernel.setArg (1, mem);
-    kernel.setArg (2, result.mem);
-    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
-
-    return result;
-}
-
 ClMatrix ClMatrix::mul (const ClMatrix& other) const
 {
     if (cols != other.rows) throw runtime_error {"Matrix dimensions mismatch for multiplication"};
@@ -175,6 +144,19 @@ ClMatrix ClMatrix::mul (const ClMatrix& other) const
     return result;
 }
 
+ClMatrix ClMatrix::mul (const double scalar) const
+{
+    ClMatrix result {rows, cols};
+
+    cl::Kernel& kernel = clSrvc.mul_scalar;
+    kernel.setArg (0, mem);
+    kernel.setArg (1, scalar);
+    kernel.setArg (2, result.mem);
+    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+
+    return result;
+}
+
 ClMatrix ClMatrix::el_mul (const ClMatrix& other) const
 {
     if (rows != other.rows || cols != other.cols) throw runtime_error {"Matrix dimensions mismatch for element multiplication"};
@@ -184,6 +166,62 @@ ClMatrix ClMatrix::el_mul (const ClMatrix& other) const
     cl::Kernel& kernel = clSrvc.el_mul;
     kernel.setArg (0, mem);
     kernel.setArg (1, other.mem);
+    kernel.setArg (2, result.mem);
+    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+
+    return result;
+}
+
+ClMatrix ClMatrix::trans_mul (const ClMatrix& other) const
+{
+    if (rows != other.rows) throw runtime_error {"Matrix dimensions mismatch for multiplication"};
+
+    ClMatrix result {cols, other.cols};
+
+    std::vector<cl::Event> event (1);
+    clAmdBlasStatus status = clAmdBlasDgemmEx (clAmdBlasColumnMajor, clAmdBlasTrans, clAmdBlasNoTrans,
+            cols, other.cols, rows, 1/*alpha*/,
+            mem, 0/*offset*/, rows/*lda*/,
+            other.mem, 0/*offset*/, other.rows/*ldb*/,
+            0/*beta*/, result.mem, 0/*offset*/, cols/*ldc*/,
+            1/*commandQueues*/, &clSrvc.queue (), 0/*waitList*/, NULL, &event[0] ());
+    if (clAmdBlasSuccess != status)
+        throw runtime_error {clSrvc.errMsg (status)};
+
+    return result;
+}
+
+ClMatrix ClMatrix::mul_trans (const ClMatrix& other) const
+{
+    if (cols != other.cols) throw runtime_error {"Matrix dimensions mismatch for multiplication"};
+
+    ClMatrix result {rows, other.rows};
+
+    std::vector<cl::Event> event (1);
+    clAmdBlasStatus status = clAmdBlasDgemmEx (clAmdBlasColumnMajor, clAmdBlasNoTrans, clAmdBlasTrans,
+            rows, other.rows, cols, 1/*alpha*/,
+            mem, 0/*offset*/, rows/*lda*/,
+            other.mem, 0/*offset*/, other.rows/*ldb*/,
+            0/*beta*/, result.mem, 0/*offset*/, rows/*ldc*/,
+            1/*commandQueues*/, &clSrvc.queue (), 0/*waitList*/, NULL, &event[0] ());
+    if (clAmdBlasSuccess != status)
+        throw runtime_error {clSrvc.errMsg (status)};
+
+    return result;
+}
+
+ClMatrix ClMatrix::div (const double scalar) const
+{
+    return mul (1 / scalar);
+}
+
+ClMatrix ClMatrix::divisor (const double dividend) const
+{
+    ClMatrix result {rows, cols};
+
+    cl::Kernel& kernel = clSrvc.scalar_div;
+    kernel.setArg (0, dividend);
+    kernel.setArg (1, mem);
     kernel.setArg (2, result.mem);
     clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
 

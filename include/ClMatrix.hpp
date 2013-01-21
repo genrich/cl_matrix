@@ -20,6 +20,8 @@ public:
     ClMatrix mul        (const ClMatrix&) const;
     ClMatrix mul        (const double)    const;
     ClMatrix el_mul     (const ClMatrix&) const;
+    ClMatrix trans_mul  (const ClMatrix&) const;
+    ClMatrix mul_trans  (const ClMatrix&) const;
     ClMatrix div        (const double)    const;
     ClMatrix divisor    (const double)    const;
     ClMatrix el_div     (const ClMatrix&) const;
