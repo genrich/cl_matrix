@@ -1,14 +1,15 @@
-function model = backprop (hiddenUnits, inputs, targets, trainIterations)
+function [model elapsedTime] = backprop (hiddenUnits, inputs, targets, trainIterations)
     inputUnits  = size (inputs,  1);
     outputUnits = size (targets, 1);
     samples     = size (inputs,  2);
 
-    t  = targets;
     m  = samples;
+    t  = targets;
     w1 = initWeights (hiddenUnits, inputUnits);
     w2 = initWeights (outputUnits, hiddenUnits);
     y0 = inputs;
 
+    tic;
     for i = 1:trainIterations
         y1 = sigmoid (w1 * y0);
         y2 = sigmoid (w2 * y1);
@@ -24,6 +25,8 @@ function model = backprop (hiddenUnits, inputs, targets, trainIterations)
         w2 -= 0.5 * d_E_w2;
         w1 -= 0.5 * d_E_w1;
     end
+    elapsedTime = toc;
+
     model.hiddenWeights = w1;
     model.outputWeights = w2;
 end

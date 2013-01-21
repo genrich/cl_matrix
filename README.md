@@ -1,3 +1,4 @@
 OpenCL matrix for Octave. Multiplication with clAmdBlas.
 
-Aiming at making example "backprop\_cl.m" (2 layered neural network learning with backpropagation).
+Example problem: 2 layered neural network learning with backpropagation.
+Compare performance "backprop.m" VS "backprop\_cl.m" with "backprop\_compare.m"

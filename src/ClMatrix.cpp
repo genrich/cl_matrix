@@ -140,6 +140,7 @@ ClMatrix ClMatrix::mul (const ClMatrix& other) const
             1/*commandQueues*/, &clSrvc.queue (), 0/*waitList*/, NULL, &event[0] ());
     if (clAmdBlasSuccess != status)
         throw runtime_error {clSrvc.errMsg (status)};
+    cl::Event::waitForEvents (event);
 
     return result;
 }
@@ -187,6 +188,7 @@ ClMatrix ClMatrix::trans_mul (const ClMatrix& other) const
             1/*commandQueues*/, &clSrvc.queue (), 0/*waitList*/, NULL, &event[0] ());
     if (clAmdBlasSuccess != status)
         throw runtime_error {clSrvc.errMsg (status)};
+    cl::Event::waitForEvents (event);
 
     return result;
 }
@@ -206,6 +208,7 @@ ClMatrix ClMatrix::mul_trans (const ClMatrix& other) const
             1/*commandQueues*/, &clSrvc.queue (), 0/*waitList*/, NULL, &event[0] ());
     if (clAmdBlasSuccess != status)
         throw runtime_error {clSrvc.errMsg (status)};
+    cl::Event::waitForEvents (event);
 
     return result;
 }
