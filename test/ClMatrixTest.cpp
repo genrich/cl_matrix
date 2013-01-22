@@ -359,3 +359,16 @@ BOOST_AUTO_TEST_CASE (sigmoid_Test)
         BOOST_CHECK_SMALL (result[i] - (1 / (1 + exp (-data[i]))), tolerance);
     }
 }
+
+BOOST_AUTO_TEST_CASE (eventTest)
+{
+    double data[] {1, 2, 3, 4},
+           result[4];
+    ClMatrix mat {2, 2, data};
+
+    auto m = mat.add (1);
+    m.copyTo (result);
+    m.copyTo (result);
+
+    BOOST_CHECK (true);
+}

@@ -14,48 +14,68 @@ using namespace std;
 
 extern ClService clSrvc;
 
-cl_mem createEmpty (int rows, int cols)
+#define STRINGIZE(x) STRINGIZE2(x)
+#define STRINGIZE2(x) #x
+#define __(x) do {const int val = (x); if (val) throw runtime_error {"\n" __FILE__ ":" STRINGIZE(__LINE__) ":1 ERROR: " + clSrvc.errMsg (val)};} while (0)
+
+static int fillEvents (cl_event events[], const cl_event event1, const cl_event event2)
+{
+    int i = 0;
+    if (event1 != nullptr) events[i++] = event1;
+    if (event2 != nullptr) events[i++] = event2;
+    return i;
+}
+
+static cl_mem createEmpty (int rows, int cols)
 {
     cl_int err;
-    cl_mem mem;
-    mem = clCreateBuffer (clSrvc.ctx (), CL_MEM_READ_WRITE, rows * cols * sizeof (double), nullptr, &err);
-    if (CL_SUCCESS != err)
+    cl_mem mem = clCreateBuffer (clSrvc.ctx (), CL_MEM_READ_WRITE, rows * cols * sizeof (double), nullptr, &err);
+    if (err != CL_SUCCESS)
         throw runtime_error {"Create memory buffer (" + to_string (err) + ")"};
     return mem;
 }
 
 ClMatrix::ClMatrix (const int r, const int c)
-    :ClMatrix (r, c, nullptr)
+    :ClMatrix {r, c, nullptr}
 {
 }
 
 ClMatrix::ClMatrix (const int r, const int c, const double* data)
-    :rows (r), cols (c), mem (createEmpty (r, c))
+    :rows {r}, cols {c}, mem {createEmpty (r, c)}, event {nullptr}
 {
-    if (nullptr != data)
+    if (data != nullptr)
     {
-        cl_int err = clEnqueueWriteBuffer (clSrvc.queue (), mem, CL_TRUE, 0, r * c * sizeof (double), data, 0, NULL, NULL);
-        if (CL_SUCCESS != err)
+        const cl_int err = clEnqueueWriteBuffer (clSrvc.queue (), mem, CL_TRUE, 0, r * c * sizeof (double), data, 0, NULL, NULL);
+        if (err != CL_SUCCESS)
             throw runtime_error {"Couldn't write to the cl buffer object (" + to_string (err) + ")"};
     }
 }
 
 ClMatrix::ClMatrix (ClMatrix&& other)
-    :rows (other.rows), cols (other.cols), mem (other.mem)
+    :rows {other.rows}, cols {other.cols}, mem {other.mem}, event {other.event}
 {
-    other.mem = nullptr;
+    other.mem   = nullptr;
+    other.event = nullptr;
 }
 
 ClMatrix::~ClMatrix ()
 {
-    if (nullptr != mem)
-        clReleaseMemObject (mem);
+    if (event != nullptr)
+    {
+        __(clWaitForEvents (1, &event));
+        __(clReleaseEvent  (event));
+    }
+    if (mem != nullptr)
+        __(clReleaseMemObject (mem));
 }
 
 void ClMatrix::copyTo (double* data) const
 {
-    cl_int err = clEnqueueReadBuffer (clSrvc.queue (), mem, CL_TRUE, 0, byteSize (), data, 0, NULL, NULL);
-    if (CL_SUCCESS != err)
+    int             numEvents = event == nullptr ? 0 : 1;
+    const cl_event* events    = numEvents == 0 ? nullptr : &event;
+
+    const cl_int err = clEnqueueReadBuffer (clSrvc.queue (), mem, CL_TRUE, 0, byteSize (), data, numEvents, events, NULL);
+    if (err != CL_SUCCESS)
         throw runtime_error {"Couldn't read from the cl buffer object (" + to_string (err) + ")"};
 }
 
@@ -68,10 +88,17 @@ ClMatrix ClMatrix::uminus () const
 {
     ClMatrix result {rows, cols};
 
-    cl::Kernel& kernel = clSrvc.uminus;
-    kernel.setArg (0, mem);
-    kernel.setArg (1, result.mem);
-    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+    cl_command_queue queue     = clSrvc.queue ();
+    size_t           workSize  = rows * cols;
+    int              numEvents = event == nullptr ? 0 : 1;
+    const cl_event*  events    = numEvents == 0 ? nullptr : &event;
+
+    cl_kernel kernel = clSrvc.uminus ();
+
+    __(clSetKernelArg (kernel, 0, sizeof (cl_mem), &mem));
+    __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &result.mem));
+
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, numEvents, events, &result.event));
 
     return result;
 }
@@ -80,12 +107,20 @@ ClMatrix ClMatrix::transpose () const
 {
     ClMatrix result {cols, rows};
 
-    cl::Kernel& kernel = clSrvc.transpose;
-    kernel.setArg (0, mem);
-    kernel.setArg (1, rows);
-    kernel.setArg (2, cols);
-    kernel.setArg (3, result.mem);
-    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+    cl_command_queue queue     = clSrvc.queue ();
+    size_t           workSize  = rows * cols;
+    int              numEvents = event == nullptr ? 0 : 1;
+    const cl_event*  events    = numEvents == 0 ? nullptr : &event;
+
+    cl_kernel kernel = clSrvc.transpose ();
+
+    __(clSetKernelArg (kernel, 0, sizeof (cl_mem), &mem));
+    __(clSetKernelArg (kernel, 1, sizeof (rows),   &rows));
+    __(clSetKernelArg (kernel, 2, sizeof (cols),   &cols));
+    __(clSetKernelArg (kernel, 3, sizeof (cl_mem), &result.mem));
+
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, numEvents, events, &result.event));
+
     return result;
 }
 
@@ -95,11 +130,19 @@ ClMatrix ClMatrix::add (const ClMatrix& other) const
 
     ClMatrix result {rows, cols};
 
-    cl::Kernel& kernel = clSrvc.add;
-    kernel.setArg (0, mem);
-    kernel.setArg (1, other.mem);
-    kernel.setArg (2, result.mem);
-    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+    cl_command_queue queue     = clSrvc.queue ();
+    size_t           workSize  = rows * cols;
+    cl_event         evs[2];
+    int              numEvents = fillEvents (evs, event, other.event);
+    const cl_event*  events    = numEvents == 0 ? nullptr : evs;
+
+    cl_kernel kernel = clSrvc.add ();
+
+    __(clSetKernelArg (kernel, 0, sizeof (cl_mem), &mem));
+    __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &other.mem));
+    __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
+
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, numEvents, events, &result.event));
 
     return result;
 }
@@ -108,11 +151,18 @@ ClMatrix ClMatrix::add (const double scalar) const
 {
     ClMatrix result {rows, cols};
 
-    cl::Kernel& kernel = clSrvc.add_scalar;
-    kernel.setArg (0, mem);
-    kernel.setArg (1, scalar);
-    kernel.setArg (2, result.mem);
-    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+    cl_command_queue queue     = clSrvc.queue ();
+    size_t           workSize  = rows * cols;
+    int              numEvents = event == nullptr ? 0 : 1;
+    const cl_event*  events    = numEvents == 0 ? nullptr : &event;
+
+    cl_kernel kernel = clSrvc.add_scalar ();
+
+    __(clSetKernelArg (kernel, 0, sizeof (cl_mem), &mem));
+    __(clSetKernelArg (kernel, 1, sizeof (scalar), &scalar));
+    __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
+
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, numEvents, events, &result.event));
 
     return result;
 }
@@ -123,11 +173,19 @@ ClMatrix ClMatrix::sub (const ClMatrix& other) const
 
     ClMatrix result {rows, cols};
 
-    cl::Kernel& kernel = clSrvc.sub;
-    kernel.setArg (0, mem);
-    kernel.setArg (1, other.mem);
-    kernel.setArg (2, result.mem);
-    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+    cl_command_queue queue     = clSrvc.queue ();
+    size_t           workSize  = rows * cols;
+    cl_event         evs[2];
+    int              numEvents = fillEvents (evs, event, other.event);
+    const cl_event*  events    = numEvents == 0 ? nullptr : evs;
+
+    cl_kernel kernel = clSrvc.sub ();
+
+    __(clSetKernelArg (kernel, 0, sizeof (cl_mem), &mem));
+    __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &other.mem));
+    __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
+
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, numEvents, events, &result.event));
 
     return result;
 }
@@ -141,11 +199,18 @@ ClMatrix ClMatrix::subtrahend (const double minuend) const
 {
     ClMatrix result {rows, cols};
 
-    cl::Kernel& kernel = clSrvc.scalar_sub;
-    kernel.setArg (0, minuend);
-    kernel.setArg (1, mem);
-    kernel.setArg (2, result.mem);
-    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+    cl_command_queue queue     = clSrvc.queue ();
+    size_t           workSize  = rows * cols;
+    int              numEvents = event == nullptr ? 0 : 1;
+    const cl_event*  events    = numEvents == 0 ? nullptr : &event;
+
+    cl_kernel kernel = clSrvc.scalar_sub ();
+
+    __(clSetKernelArg (kernel, 0, sizeof (minuend), &minuend));
+    __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &mem));
+    __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
+
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, numEvents, events, &result.event));
 
     return result;
 }
@@ -156,16 +221,20 @@ ClMatrix ClMatrix::mul (const ClMatrix& other) const
 
     ClMatrix result {rows, other.cols};
 
-    std::vector<cl::Event> event (1);
-    clAmdBlasStatus status = clAmdBlasDgemmEx (clAmdBlasColumnMajor, clAmdBlasNoTrans, clAmdBlasNoTrans,
-            rows, other.cols, cols, 1/*alpha*/,
-            mem, 0/*offset*/, rows/*lda*/,
-            other.mem, 0/*offset*/, other.rows/*ldb*/,
-            0/*beta*/, result.mem, 0/*offset*/, rows/*ldc*/,
-            1/*commandQueues*/, &clSrvc.queue (), 0/*waitList*/, NULL, &event[0] ());
-    if (clAmdBlasSuccess != status)
+    cl_command_queue queue     = clSrvc.queue ();
+    cl_event         evs[2];
+    int              numEvents = fillEvents (evs, event, other.event);
+    const cl_event*  events    = numEvents == 0 ? nullptr : evs;
+
+    const auto
+        status = clAmdBlasDgemmEx (clAmdBlasColumnMajor, clAmdBlasNoTrans, clAmdBlasNoTrans,
+                                   rows, other.cols, cols, 1/*alpha*/,
+                                   mem, 0/*offset*/, rows/*lda*/,
+                                   other.mem, 0/*offset*/, other.rows/*ldb*/,
+                                   0/*beta*/, result.mem, 0/*offset*/, rows/*ldc*/,
+                                   1/*commandQueues*/, &queue, numEvents, events, &result.event);
+    if (status != clAmdBlasSuccess)
         throw runtime_error {clSrvc.errMsg (status)};
-    cl::Event::waitForEvents (event);
 
     return result;
 }
@@ -174,11 +243,18 @@ ClMatrix ClMatrix::mul (const double scalar) const
 {
     ClMatrix result {rows, cols};
 
-    cl::Kernel& kernel = clSrvc.mul_scalar;
-    kernel.setArg (0, mem);
-    kernel.setArg (1, scalar);
-    kernel.setArg (2, result.mem);
-    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+    cl_command_queue queue     = clSrvc.queue ();
+    size_t           workSize  = rows * cols;
+    int              numEvents = event == nullptr ? 0 : 1;
+    const cl_event*  events    = numEvents == 0 ? nullptr : &event;
+
+    cl_kernel kernel = clSrvc.mul_scalar ();
+
+    __(clSetKernelArg (kernel, 0, sizeof (cl_mem), &mem));
+    __(clSetKernelArg (kernel, 1, sizeof (scalar), &scalar));
+    __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
+
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, numEvents, events, &result.event));
 
     return result;
 }
@@ -189,11 +265,19 @@ ClMatrix ClMatrix::el_mul (const ClMatrix& other) const
 
     ClMatrix result {rows, cols};
 
-    cl::Kernel& kernel = clSrvc.el_mul;
-    kernel.setArg (0, mem);
-    kernel.setArg (1, other.mem);
-    kernel.setArg (2, result.mem);
-    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+    cl_command_queue queue     = clSrvc.queue ();
+    size_t           workSize  = rows * cols;
+    cl_event         evs[2];
+    int              numEvents = fillEvents (evs, event, other.event);
+    const cl_event*  events    = numEvents == 0 ? nullptr : evs;
+
+    cl_kernel kernel = clSrvc.el_mul ();
+
+    __(clSetKernelArg (kernel, 0, sizeof (cl_mem), &mem));
+    __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &other.mem));
+    __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
+
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, numEvents, events, &result.event));
 
     return result;
 }
@@ -204,16 +288,20 @@ ClMatrix ClMatrix::trans_mul (const ClMatrix& other) const
 
     ClMatrix result {cols, other.cols};
 
-    std::vector<cl::Event> event (1);
-    clAmdBlasStatus status = clAmdBlasDgemmEx (clAmdBlasColumnMajor, clAmdBlasTrans, clAmdBlasNoTrans,
-            cols, other.cols, rows, 1/*alpha*/,
-            mem, 0/*offset*/, rows/*lda*/,
-            other.mem, 0/*offset*/, other.rows/*ldb*/,
-            0/*beta*/, result.mem, 0/*offset*/, cols/*ldc*/,
-            1/*commandQueues*/, &clSrvc.queue (), 0/*waitList*/, NULL, &event[0] ());
-    if (clAmdBlasSuccess != status)
+    cl_command_queue queue     = clSrvc.queue ();
+    cl_event         evs[2];
+    int              numEvents = fillEvents (evs, event, other.event);
+    const cl_event*  events    = numEvents == 0 ? nullptr : evs;
+
+    const auto
+        status = clAmdBlasDgemmEx (clAmdBlasColumnMajor, clAmdBlasTrans, clAmdBlasNoTrans,
+                                   cols, other.cols, rows, 1/*alpha*/,
+                                   mem, 0/*offset*/, rows/*lda*/,
+                                   other.mem, 0/*offset*/, other.rows/*ldb*/,
+                                   0/*beta*/, result.mem, 0/*offset*/, cols/*ldc*/,
+                                   1/*commandQueues*/, &queue, numEvents, events, &result.event);
+    if (status != clAmdBlasSuccess)
         throw runtime_error {clSrvc.errMsg (status)};
-    cl::Event::waitForEvents (event);
 
     return result;
 }
@@ -224,16 +312,20 @@ ClMatrix ClMatrix::mul_trans (const ClMatrix& other) const
 
     ClMatrix result {rows, other.rows};
 
-    std::vector<cl::Event> event (1);
-    clAmdBlasStatus status = clAmdBlasDgemmEx (clAmdBlasColumnMajor, clAmdBlasNoTrans, clAmdBlasTrans,
-            rows, other.rows, cols, 1/*alpha*/,
-            mem, 0/*offset*/, rows/*lda*/,
-            other.mem, 0/*offset*/, other.rows/*ldb*/,
-            0/*beta*/, result.mem, 0/*offset*/, rows/*ldc*/,
-            1/*commandQueues*/, &clSrvc.queue (), 0/*waitList*/, NULL, &event[0] ());
-    if (clAmdBlasSuccess != status)
+    cl_command_queue queue     = clSrvc.queue ();
+    cl_event         evs[2];
+    int              numEvents = fillEvents (evs, event, other.event);
+    const cl_event*  events    = numEvents == 0 ? nullptr : evs;
+
+    const auto
+        status = clAmdBlasDgemmEx (clAmdBlasColumnMajor, clAmdBlasNoTrans, clAmdBlasTrans,
+                                   rows, other.rows, cols, 1/*alpha*/,
+                                   mem, 0/*offset*/, rows/*lda*/,
+                                   other.mem, 0/*offset*/, other.rows/*ldb*/,
+                                   0/*beta*/, result.mem, 0/*offset*/, rows/*ldc*/,
+                                   1/*commandQueues*/, &queue, numEvents, events, &result.event);
+    if (status != clAmdBlasSuccess)
         throw runtime_error {clSrvc.errMsg (status)};
-    cl::Event::waitForEvents (event);
 
     return result;
 }
@@ -247,11 +339,18 @@ ClMatrix ClMatrix::divisor (const double dividend) const
 {
     ClMatrix result {rows, cols};
 
-    cl::Kernel& kernel = clSrvc.scalar_div;
-    kernel.setArg (0, dividend);
-    kernel.setArg (1, mem);
-    kernel.setArg (2, result.mem);
-    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+    cl_command_queue queue     = clSrvc.queue ();
+    size_t           workSize  = rows * cols;
+    int              numEvents = event == nullptr ? 0 : 1;
+    const cl_event*  events    = numEvents == 0 ? nullptr : &event;
+
+    cl_kernel kernel = clSrvc.scalar_div ();
+
+    __(clSetKernelArg (kernel, 0, sizeof (dividend), &dividend));
+    __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &mem));
+    __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
+
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, numEvents, events, &result.event));
 
     return result;
 }
@@ -262,11 +361,19 @@ ClMatrix ClMatrix::el_div (const ClMatrix& other) const
 
     ClMatrix result {rows, cols};
 
-    cl::Kernel& kernel = clSrvc.el_div;
-    kernel.setArg (0, mem);
-    kernel.setArg (1, other.mem);
-    kernel.setArg (2, result.mem);
-    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+    cl_command_queue queue     = clSrvc.queue ();
+    size_t           workSize  = rows * cols;
+    cl_event         evs[2];
+    int              numEvents = fillEvents (evs, event, other.event);
+    const cl_event*  events    = numEvents == 0 ? nullptr : evs;
+
+    cl_kernel kernel = clSrvc.el_div ();
+
+    __(clSetKernelArg (kernel, 0, sizeof (cl_mem), &mem));
+    __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &other.mem));
+    __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
+
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, numEvents, events, &result.event));
 
     return result;
 }
@@ -275,10 +382,17 @@ ClMatrix ClMatrix::sigmoid () const
 {
     ClMatrix result {rows, cols};
 
-    cl::Kernel& kernel = clSrvc.sigmoid;
-    kernel.setArg (0, mem);
-    kernel.setArg (1, result.mem);
-    clSrvc.queue.enqueueNDRangeKernel (kernel, 0, rows * cols);
+    cl_command_queue queue     = clSrvc.queue ();
+    size_t           workSize  = rows * cols;
+    int              numEvents = event == nullptr ? 0 : 1;
+    const cl_event*  events    = numEvents == 0 ? nullptr : &event;
+
+    cl_kernel kernel = clSrvc.sigmoid ();
+
+    __(clSetKernelArg (kernel, 0, sizeof (cl_mem), &mem));
+    __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &result.mem));
+
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, numEvents, events, &result.event));
 
     return result;
 }

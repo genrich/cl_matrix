@@ -6,12 +6,15 @@
 
 class ClMatrix
 {
-    cl_mem mem;
-
 public:
     const int rows;
     const int cols;
 
+private:
+    cl_mem   mem;
+    cl_event event;
+
+public:
     ClMatrix uminus     ()                const;
     ClMatrix transpose  ()                const;
     ClMatrix add        (const ClMatrix&) const;
