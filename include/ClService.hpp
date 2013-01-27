@@ -8,6 +8,7 @@ class ClService
 {
     int         errCode;
     std::string message;
+
 public:
     const cl::Device              device;
     const std::vector<cl::Device> devices;
@@ -33,6 +34,8 @@ public:
                        ClService  ();
                        ~ClService ();
     static std::string errMsg     (int);
+
+    const size_t globMem10Percent;
 };
 
 #endif // CL_SERVICE_HPP

@@ -12,7 +12,6 @@ public:
 
 private:
     cl_mem   mem;
-    cl_event event;
 
 public:
     ClMatrix uminus     ()                const;

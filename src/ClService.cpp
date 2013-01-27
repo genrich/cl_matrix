@@ -102,8 +102,14 @@ ClService::ClService ()
     el_div      {loadKernel (program, "el_div",     errCode, message)},
     sigmoid     {loadKernel (program, "sigmoid",    errCode, message)},
     initialized {initialize (errCode, message)},
-    statusMsg   {message}
+    statusMsg   {message},
+
+    globMem10Percent {(size_t) (device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE> () / 1024.0 / 10.0)}
 {
+    size_t globMemSizeKb = device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE> () / 1024;
+    auto globMemFreeKb   = device.getInfo<CL_DEVICE_GLOBAL_FREE_MEMORY_AMD> ();
+    if (globMemFreeKb[0] < globMemSizeKb * 9.0 / 10.0 || globMemFreeKb[0] > globMemSizeKb)
+        throw runtime_error {"Invalid free mem(" + to_string (globMemFreeKb[0]) + " Kb) size on the device"};
 }
 
 ClService::~ClService ()

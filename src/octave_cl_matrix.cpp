@@ -33,13 +33,13 @@ void report_error (string msg)
     (*current_liboctave_error_handler) (msg.c_str ());
 }
 
-octave_cl_matrix::octave_cl_matrix()
+octave_cl_matrix::octave_cl_matrix ()
     :matrix (1, 1)
 {
 }
 
 octave_cl_matrix::octave_cl_matrix (const Matrix& m)
-    :matrix (m.rows(), m.cols(), m.data())
+    :matrix (m.rows (), m.cols (), m.data ())
 {
 }
 
@@ -48,11 +48,11 @@ octave_cl_matrix::octave_cl_matrix (ClMatrix m)
 {
 }
 
-octave_cl_matrix::~octave_cl_matrix()
+octave_cl_matrix::~octave_cl_matrix ()
 {
 }
 
-const ClMatrix& octave_cl_matrix::cl_matrix_value() const
+const ClMatrix& octave_cl_matrix::cl_matrix_value () const
 {
     return matrix;
 }
@@ -85,7 +85,7 @@ size_t octave_cl_matrix::byte_size () const
 Matrix octave_cl_matrix::matrix_value (bool = false) const
 {
   Matrix retval {matrix.rows, matrix.cols};
-  matrix.copyTo (retval.fortran_vec());
+  matrix.copyTo (retval.fortran_vec ());
   return retval;
 }
 
@@ -166,7 +166,7 @@ DEFBINOP_FN (el_div,         cl_matrix, cl_matrix, el_div)
 DEFCONV(cl_matrix_to_matrix, octave_cl_matrix, octave_matrix)
 {
   CAST_CONV_ARG (const octave_cl_matrix&);
-  return new octave_matrix {v.matrix_value()};
+  return new octave_matrix {v.matrix_value ()};
 }
 
 DEFUN_DLD (cl_matrix, args, nargout,
@@ -218,7 +218,7 @@ Create OpenCL matrix                                                       \n\
         }
 
 
-        Matrix m = args(0).matrix_value ();
+        Matrix m = args (0).matrix_value ();
         if (!error_state)
         {
             try
