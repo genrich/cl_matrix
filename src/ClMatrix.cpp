@@ -3,6 +3,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <iostream>
+#include <cassert>
 
 #include "ClMatrix.hpp"
 #include "ClService.hpp"
@@ -33,17 +34,17 @@ static cl_mem createBuffer (const size_t bytes)
     return mem;
 }
 
-ClMatrix::ClMatrix (const size_t r, const size_t c)
-    :ClMatrix {r, c, nullptr}
+ClMatrix::ClMatrix (const size_t r, const size_t c):
+    ClMatrix {r, c, nullptr}
 {
 }
 
 ClMatrix::ClMatrix (const size_t r, const size_t c, const double* data):
-    rows       {r},
-    cols       {c},
-    size       {rows * cols},
-    byteSize   {size * sizeof (double)},
-    mem        {createBuffer (byteSize)}
+    rows     {r},
+    cols     {c},
+    size     {rows * cols},
+    byteSize {size * sizeof (double)},
+    mem      {createBuffer (byteSize)}
 {
     size_t freeGlobMem[2];
     __(clGetDeviceInfo (clSrvc.device (), CL_DEVICE_GLOBAL_FREE_MEMORY_AMD,
@@ -59,6 +60,13 @@ ClMatrix::ClMatrix (const size_t r, const size_t c, const double* data):
         if (err != CL_SUCCESS)
             throw runtime_error {"Couldn't write to the cl buffer object (" + to_string (err) + ")"};
     }
+}
+
+ClMatrix::ClMatrix (const int r, const int c, const double* data):
+    ClMatrix {(assert (r > 0), static_cast<size_t> (r)),
+              (assert (c > 0), static_cast<size_t> (c)),
+              data}
+{
 }
 
 ClMatrix::ClMatrix (ClMatrix&& other):
@@ -363,4 +371,9 @@ ClMatrix ClMatrix::sigmoid () const
     __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, workSize, nullptr, 0, nullptr, nullptr));
 
     return result;
+}
+
+ClMatrix ClMatrix::sum () const
+{
+    return {1, 1};
 }

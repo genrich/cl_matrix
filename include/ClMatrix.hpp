@@ -31,17 +31,20 @@ public:
     ClMatrix div        (const double)    const;
     ClMatrix divisor    (const double)    const;
     ClMatrix el_div     (const ClMatrix&) const;
-public:
+    ClMatrix sigmoid    ()                const;
+    ClMatrix sum        ()                const;
+private:
               ClMatrix  (const size_t rows, const size_t cols);
               ClMatrix  (const size_t rows, const size_t cols, const double* data);
+public:
+              ClMatrix  (const int rows, const int cols, const double* data);
               ~ClMatrix ();
-              ClMatrix  (ClMatrix const&)                                     = delete;
+              ClMatrix  (ClMatrix const&)                                           = delete;
               ClMatrix  (ClMatrix &&);
-    ClMatrix& operator= (const ClMatrix&)                                     = delete;
+    ClMatrix& operator= (const ClMatrix&)                                           = delete;
 
     void   copyTo   (double*) const;
 
-    ClMatrix sigmoid   ()                const;
 };
 
 #endif // CL_MATRIX_HPP

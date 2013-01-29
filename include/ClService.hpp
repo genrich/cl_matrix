@@ -15,9 +15,10 @@ public:
     const cl::Context             ctx;
     cl::CommandQueue              queue;
 
-    const int         vectorSize;
+    const cl_uint     vectorSize;
     const std::string sfx;
     const size_t      globMem10Percent;
+    const cl_uint     computeUnits;
 
     const cl::Program program;
     cl::Kernel        uminus;

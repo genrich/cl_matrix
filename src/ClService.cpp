@@ -93,9 +93,10 @@ ClService::ClService ():
     ctx     {devices},
     queue   {ctx, device},
 
-    vectorSize       {device.getInfo<CL_DEVICE_PREFERRED_VECTOR_WIDTH_DOUBLE> () == 2 ? 2 : 1}, // fallback to 1 if 2 is not supported
+    vectorSize       {device.getInfo<CL_DEVICE_PREFERRED_VECTOR_WIDTH_DOUBLE> () == 2U ? 2U : 1U}, // fallback to 1 if 2 is not supported
     sfx              {vectorSize > 1 ? to_string (vectorSize) : ""},
     globMem10Percent {static_cast<size_t> (device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE> () / 1024.0 / 10.0)},
+    computeUnits     {device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS> ()},
 
     program {loadProgram ("kernels", errCode, message)},
 

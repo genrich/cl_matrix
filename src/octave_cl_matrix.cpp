@@ -34,17 +34,17 @@ void report_error (string msg)
 }
 
 octave_cl_matrix::octave_cl_matrix ()
-    :matrix (1, 1)
+    :matrix {1, 1, nullptr}
 {
 }
 
 octave_cl_matrix::octave_cl_matrix (const Matrix& m)
-    :matrix (m.rows (), m.cols (), m.data ())
+    :matrix {m.rows (), m.cols (), m.data ()}
 {
 }
 
 octave_cl_matrix::octave_cl_matrix (ClMatrix m)
-    :matrix (move (m))
+    :matrix {move (m)}
 {
 }
 
@@ -254,12 +254,40 @@ Apply @code{sigmoid} function to @var{cl_matrix}                           \n\
 @end deftypefn                                                             \n")
 {
     int nargin = args.length ();
-    if (nargin == 1 && octave_cl_matrix::static_type_id () == args (0).type_id ())
+    if (nargin == 1
+        && args (0). type_id () == octave_cl_matrix::static_type_id ())
     {
         try
         {
-            const octave_cl_matrix& m = dynamic_cast<const octave_cl_matrix&> (args (0).get_rep ());
-            return octave_value {new octave_cl_matrix {m.cl_matrix_value ().sigmoid ()}};
+            const octave_cl_matrix& m = dynamic_cast<const octave_cl_matrix&> (args (0). get_rep ());
+            return octave_value {new octave_cl_matrix {m. cl_matrix_value (). sigmoid ()}};
+        }
+        catch (exception& e)
+        {
+            report_error (e.what ());
+        }
+    }
+    else
+    {
+        print_usage ();
+    }
+    return {};
+}
+
+DEFUN_DLD(cl_sum, args, nargout,
+"-*- texinfo -*-                                                            \n\
+@deftypefn {Loadable Function} {@var{cl_matrix} =} cl_sum (@var{cl_matrix}) \n\
+Sum all elements of @var{cl_matrix} to produce @var{cl_matrix (1, 1)}       \n\
+@end deftypefn                                                              \n")
+{
+    int nargin = args.length ();
+    if (nargin == 1
+        && args (0). type_id () == octave_cl_matrix::static_type_id ())
+    {
+        try
+        {
+            const octave_cl_matrix& m = dynamic_cast<const octave_cl_matrix&> (args (0). get_rep ());
+            return octave_value {new octave_cl_matrix {m. cl_matrix_value (). sum ()}};
         }
         catch (exception& e)
         {
