@@ -79,14 +79,14 @@ dim_vector octave_cl_matrix::dims () const
 
 size_t octave_cl_matrix::byte_size () const
 {
-    return matrix.byteSize ();
+    return matrix.byteSize;
 }
 
 Matrix octave_cl_matrix::matrix_value (bool = false) const
 {
-  Matrix retval {matrix.rows, matrix.cols};
-  matrix.copyTo (retval.fortran_vec ());
-  return retval;
+    Matrix retval {static_cast<int> (matrix.rows), static_cast<int> (matrix.cols)};
+    matrix.copyTo (retval.fortran_vec ());
+    return retval;
 }
 
 static octave_cl_matrix* uminus (const ClMatrix& mat)

@@ -7,11 +7,13 @@
 class ClMatrix
 {
 public:
-    const int rows;
-    const int cols;
+    const size_t rows;
+    const size_t cols;
+    const size_t size;
+    const size_t byteSize;
 
 private:
-    cl_mem   mem;
+    cl_mem mem;
 
 public:
     ClMatrix uminus     ()                const;
@@ -30,15 +32,14 @@ public:
     ClMatrix divisor    (const double)    const;
     ClMatrix el_div     (const ClMatrix&) const;
 public:
-              ClMatrix  (const int rows, const int cols);
-              ClMatrix  (const int rows, const int cols, const double* data);
+              ClMatrix  (const size_t rows, const size_t cols);
+              ClMatrix  (const size_t rows, const size_t cols, const double* data);
               ~ClMatrix ();
               ClMatrix  (ClMatrix const&)                                     = delete;
               ClMatrix  (ClMatrix &&);
     ClMatrix& operator= (const ClMatrix&)                                     = delete;
 
     void   copyTo   (double*) const;
-    size_t byteSize ()        const;
 
     ClMatrix sigmoid   ()                const;
 };

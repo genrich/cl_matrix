@@ -17,22 +17,33 @@ extern ClService clSrvc;
 #define STRINGIZE2(x) #x
 #define __(x) do {const int val = (x); if (val) throw runtime_error {"\n" __FILE__ ":" STRINGIZE(__LINE__) ":1 ERROR: " + clSrvc.errMsg (val)};} while (0)
 
-static cl_mem createEmpty (int rows, int cols)
+static size_t sizeVec (const size_t rows, const size_t cols)
+{
+    int elements = rows * cols;
+    int extra = (clSrvc.vectorSize - elements % clSrvc.vectorSize) % clSrvc.vectorSize;
+    return (elements + extra);
+}
+
+static cl_mem createBuffer (const size_t bytes)
 {
     cl_int err;
-    cl_mem mem = clCreateBuffer (clSrvc.ctx (), CL_MEM_READ_WRITE, rows * cols * sizeof (double), nullptr, &err);
+    cl_mem mem = clCreateBuffer (clSrvc.ctx (), CL_MEM_READ_WRITE, bytes, nullptr, &err);
     if (err != CL_SUCCESS)
         throw runtime_error {"Create memory buffer (" + to_string (err) + ")"};
     return mem;
 }
 
-ClMatrix::ClMatrix (const int r, const int c)
+ClMatrix::ClMatrix (const size_t r, const size_t c)
     :ClMatrix {r, c, nullptr}
 {
 }
 
-ClMatrix::ClMatrix (const int r, const int c, const double* data)
-    :rows {r}, cols {c}, mem {createEmpty (r, c)}
+ClMatrix::ClMatrix (const size_t r, const size_t c, const double* data):
+    rows       {r},
+    cols       {c},
+    size       {rows * cols},
+    byteSize   {size * sizeof (double)},
+    mem        {createBuffer (byteSize)}
 {
     size_t freeGlobMem[2];
     __(clGetDeviceInfo (clSrvc.device (), CL_DEVICE_GLOBAL_FREE_MEMORY_AMD,
@@ -44,14 +55,18 @@ ClMatrix::ClMatrix (const int r, const int c, const double* data)
     if (data != nullptr)
     {
         const cl_int err = clEnqueueWriteBuffer (clSrvc.queue (), mem, CL_TRUE, 0,
-                                                 r * c * sizeof (double), data, 0, nullptr, nullptr);
+                                                 byteSize, data, 0, nullptr, nullptr);
         if (err != CL_SUCCESS)
             throw runtime_error {"Couldn't write to the cl buffer object (" + to_string (err) + ")"};
     }
 }
 
-ClMatrix::ClMatrix (ClMatrix&& other)
-    :rows {other.rows}, cols {other.cols}, mem {other.mem}
+ClMatrix::ClMatrix (ClMatrix&& other):
+    rows     {other.rows},
+    cols     {other.cols},
+    size     {other.size},
+    byteSize {other.byteSize},
+    mem      {other.mem}
 {
     other.mem   = nullptr;
 }
@@ -66,30 +81,26 @@ void ClMatrix::copyTo (double* data) const
 {
     __(clFinish (clSrvc.queue ()));
 
-    const cl_int err = clEnqueueReadBuffer (clSrvc.queue (), mem, CL_TRUE, 0, byteSize (), data, 0, nullptr, nullptr);
+    const cl_int err = clEnqueueReadBuffer (clSrvc.queue (), mem, CL_TRUE, 0, byteSize,
+                                            data, 0, nullptr, nullptr);
 
     if (err != CL_SUCCESS)
         throw runtime_error {"Couldn't read from the cl buffer object (" + to_string (err) + ")"};
-}
-
-size_t ClMatrix::byteSize () const
-{
-    return rows * cols * sizeof (double);
 }
 
 ClMatrix ClMatrix::uminus () const
 {
     ClMatrix result {rows, cols};
 
-    cl_command_queue queue     = clSrvc.queue ();
-    size_t           workSize  = rows * cols;
+    cl_command_queue queue      = clSrvc.queue ();
+    const size_t     workSize[] = {size};
 
     cl_kernel kernel = clSrvc.uminus ();
 
     __(clSetKernelArg (kernel, 0, sizeof (cl_mem), &mem));
     __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &result.mem));
 
-    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, 0, nullptr, nullptr));
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, workSize, nullptr, 0, nullptr, nullptr));
 
     return result;
 }
@@ -98,17 +109,15 @@ ClMatrix ClMatrix::transpose () const
 {
     ClMatrix result {cols, rows};
 
-    cl_command_queue queue     = clSrvc.queue ();
-    size_t           workSize  = rows * cols;
+    cl_command_queue queue      = clSrvc.queue ();
+    const size_t     workSize[] = {rows, cols};
 
     cl_kernel kernel = clSrvc.transpose ();
 
     __(clSetKernelArg (kernel, 0, sizeof (cl_mem), &mem));
-    __(clSetKernelArg (kernel, 1, sizeof (rows),   &rows));
-    __(clSetKernelArg (kernel, 2, sizeof (cols),   &cols));
-    __(clSetKernelArg (kernel, 3, sizeof (cl_mem), &result.mem));
+    __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &result.mem));
 
-    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, 0, nullptr, nullptr));
+    __(clEnqueueNDRangeKernel (queue, kernel, 2, nullptr, workSize, nullptr, 0, nullptr, nullptr));
 
     return result;
 }
@@ -119,8 +128,8 @@ ClMatrix ClMatrix::add (const ClMatrix& other) const
 
     ClMatrix result {rows, cols};
 
-    cl_command_queue queue     = clSrvc.queue ();
-    size_t           workSize  = rows * cols;
+    cl_command_queue queue      = clSrvc.queue ();
+    const size_t     workSize[] = {size};
 
     cl_kernel kernel = clSrvc.add ();
 
@@ -128,7 +137,7 @@ ClMatrix ClMatrix::add (const ClMatrix& other) const
     __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &other.mem));
     __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
 
-    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, 0, nullptr, nullptr));
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, workSize, nullptr, 0, nullptr, nullptr));
 
     return result;
 }
@@ -137,8 +146,8 @@ ClMatrix ClMatrix::add (const double scalar) const
 {
     ClMatrix result {rows, cols};
 
-    cl_command_queue queue     = clSrvc.queue ();
-    size_t           workSize  = rows * cols;
+    cl_command_queue queue      = clSrvc.queue ();
+    const size_t     workSize[] = {size};
 
     cl_kernel kernel = clSrvc.add_scalar ();
 
@@ -146,7 +155,7 @@ ClMatrix ClMatrix::add (const double scalar) const
     __(clSetKernelArg (kernel, 1, sizeof (scalar), &scalar));
     __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
 
-    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, 0, nullptr, nullptr));
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, workSize, nullptr, 0, nullptr, nullptr));
 
     return result;
 }
@@ -157,8 +166,8 @@ ClMatrix ClMatrix::sub (const ClMatrix& other) const
 
     ClMatrix result {rows, cols};
 
-    cl_command_queue queue     = clSrvc.queue ();
-    size_t           workSize  = rows * cols;
+    cl_command_queue queue      = clSrvc.queue ();
+    const size_t     workSize[] = {size};
 
     cl_kernel kernel = clSrvc.sub ();
 
@@ -166,7 +175,7 @@ ClMatrix ClMatrix::sub (const ClMatrix& other) const
     __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &other.mem));
     __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
 
-    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, 0, nullptr, nullptr));
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, workSize, nullptr, 0, nullptr, nullptr));
 
     return result;
 }
@@ -180,8 +189,8 @@ ClMatrix ClMatrix::subtrahend (const double minuend) const
 {
     ClMatrix result {rows, cols};
 
-    cl_command_queue queue     = clSrvc.queue ();
-    size_t           workSize  = rows * cols;
+    cl_command_queue queue      = clSrvc.queue ();
+    const size_t     workSize[] = {size};
 
     cl_kernel kernel = clSrvc.scalar_sub ();
 
@@ -189,7 +198,7 @@ ClMatrix ClMatrix::subtrahend (const double minuend) const
     __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &mem));
     __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
 
-    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, 0, nullptr, nullptr));
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, workSize, nullptr, 0, nullptr, nullptr));
 
     return result;
 }
@@ -200,7 +209,7 @@ ClMatrix ClMatrix::mul (const ClMatrix& other) const
 
     ClMatrix result {rows, other.cols};
 
-    cl_command_queue queue     = clSrvc.queue ();
+    cl_command_queue queue = clSrvc.queue ();
 
     const auto
         status = clAmdBlasDgemmEx (clAmdBlasColumnMajor, clAmdBlasNoTrans, clAmdBlasNoTrans,
@@ -220,8 +229,8 @@ ClMatrix ClMatrix::mul (const double scalar) const
 {
     ClMatrix result {rows, cols};
 
-    cl_command_queue queue     = clSrvc.queue ();
-    size_t           workSize  = rows * cols;
+    cl_command_queue queue      = clSrvc.queue ();
+    const size_t     workSize[] = {size};
 
     cl_kernel kernel = clSrvc.mul_scalar ();
 
@@ -229,7 +238,7 @@ ClMatrix ClMatrix::mul (const double scalar) const
     __(clSetKernelArg (kernel, 1, sizeof (scalar), &scalar));
     __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
 
-    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, 0, nullptr, nullptr));
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, workSize, nullptr, 0, nullptr, nullptr));
 
     return result;
 }
@@ -240,8 +249,8 @@ ClMatrix ClMatrix::el_mul (const ClMatrix& other) const
 
     ClMatrix result {rows, cols};
 
-    cl_command_queue queue     = clSrvc.queue ();
-    size_t           workSize  = rows * cols;
+    cl_command_queue queue      = clSrvc.queue ();
+    const size_t     workSize[] = {size};
 
     cl_kernel kernel = clSrvc.el_mul ();
 
@@ -249,7 +258,7 @@ ClMatrix ClMatrix::el_mul (const ClMatrix& other) const
     __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &other.mem));
     __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
 
-    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, 0, nullptr, nullptr));
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, workSize, nullptr, 0, nullptr, nullptr));
 
     return result;
 }
@@ -260,7 +269,7 @@ ClMatrix ClMatrix::trans_mul (const ClMatrix& other) const
 
     ClMatrix result {cols, other.cols};
 
-    cl_command_queue queue     = clSrvc.queue ();
+    cl_command_queue queue = clSrvc.queue ();
 
     const auto
         status = clAmdBlasDgemmEx (clAmdBlasColumnMajor, clAmdBlasTrans, clAmdBlasNoTrans,
@@ -281,7 +290,7 @@ ClMatrix ClMatrix::mul_trans (const ClMatrix& other) const
 
     ClMatrix result {rows, other.rows};
 
-    cl_command_queue queue     = clSrvc.queue ();
+    cl_command_queue queue = clSrvc.queue ();
 
     const auto
         status = clAmdBlasDgemmEx (clAmdBlasColumnMajor, clAmdBlasNoTrans, clAmdBlasTrans,
@@ -305,8 +314,8 @@ ClMatrix ClMatrix::divisor (const double dividend) const
 {
     ClMatrix result {rows, cols};
 
-    cl_command_queue queue     = clSrvc.queue ();
-    size_t           workSize  = rows * cols;
+    cl_command_queue queue      = clSrvc.queue ();
+    const size_t     workSize[] = {size};
 
     cl_kernel kernel = clSrvc.scalar_div ();
 
@@ -314,7 +323,7 @@ ClMatrix ClMatrix::divisor (const double dividend) const
     __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &mem));
     __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
 
-    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, 0, nullptr, nullptr));
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, workSize, nullptr, 0, nullptr, nullptr));
 
     return result;
 }
@@ -325,8 +334,8 @@ ClMatrix ClMatrix::el_div (const ClMatrix& other) const
 
     ClMatrix result {rows, cols};
 
-    cl_command_queue queue     = clSrvc.queue ();
-    size_t           workSize  = rows * cols;
+    cl_command_queue queue      = clSrvc.queue ();
+    const size_t     workSize[] = {size};
 
     cl_kernel kernel = clSrvc.el_div ();
 
@@ -334,7 +343,7 @@ ClMatrix ClMatrix::el_div (const ClMatrix& other) const
     __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &other.mem));
     __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
 
-    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, 0, nullptr, nullptr));
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, workSize, nullptr, 0, nullptr, nullptr));
 
     return result;
 }
@@ -343,15 +352,15 @@ ClMatrix ClMatrix::sigmoid () const
 {
     ClMatrix result {rows, cols};
 
-    cl_command_queue queue     = clSrvc.queue ();
-    size_t           workSize  = rows * cols;
+    cl_command_queue queue      = clSrvc.queue ();
+    const size_t     workSize[] = {size};
 
     cl_kernel kernel = clSrvc.sigmoid ();
 
     __(clSetKernelArg (kernel, 0, sizeof (cl_mem), &mem));
     __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &result.mem));
 
-    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, &workSize, nullptr, 0, nullptr, nullptr));
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, workSize, nullptr, 0, nullptr, nullptr));
 
     return result;
 }

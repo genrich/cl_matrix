@@ -15,6 +15,10 @@ public:
     const cl::Context             ctx;
     cl::CommandQueue              queue;
 
+    const int         vectorSize;
+    const std::string sfx;
+    const size_t      globMem10Percent;
+
     const cl::Program program;
     cl::Kernel        uminus;
     cl::Kernel        transpose;
@@ -34,8 +38,6 @@ public:
                        ClService  ();
                        ~ClService ();
     static std::string errMsg     (int);
-
-    const size_t globMem10Percent;
 };
 
 #endif // CL_SERVICE_HPP
