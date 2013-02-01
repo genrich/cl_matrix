@@ -17,10 +17,12 @@ public:
 
     const cl_uint     vectorSize;
     const std::string sfx;
+    const cl_uint     compUnits;
+    const size_t      globMemKb;
+    const size_t      globMemFreeKb;
     const size_t      globMem10Percent;
-    const cl_uint     computeUnits;
-
     const cl::Program program;
+    cl::Kernel        initZero;
     cl::Kernel        uminus;
     cl::Kernel        transpose;
     cl::Kernel        add;
@@ -32,6 +34,10 @@ public:
     cl::Kernel        scalar_div;
     cl::Kernel        el_div;
     cl::Kernel        sigmoid;
+    cl::Kernel        sumFullLoad;
+    cl::Kernel        sumCompUnit;
+    const size_t      sumCompUnitWgSize;
+    const size_t      sumCompUnitWgMultiple;
 
     const bool        initialized;
     const std::string statusMsg;

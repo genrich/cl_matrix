@@ -10,7 +10,9 @@ public:
     const size_t rows;
     const size_t cols;
     const size_t size;
+    const size_t sizeVec;
     const size_t byteSize;
+    const size_t byteSizeVec;
 
 private:
     cl_mem mem;

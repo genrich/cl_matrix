@@ -22,6 +22,7 @@ public:
     dim_vector      dims              ()                                                 const;
     size_t          byte_size         ()                                                 const;
     Matrix          matrix_value      (bool)                                             const;
+    octave_value    resize            (const dim_vector&, bool)                          const;
 
     DECLARE_OCTAVE_ALLOCATOR
     DECLARE_OV_TYPEID_FUNCTIONS_AND_DATA

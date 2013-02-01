@@ -1,1 +1,2 @@
+autoload ("cl_sum",  "cl_matrix.oct");
 autoload ("sigmoid", "cl_matrix.oct");

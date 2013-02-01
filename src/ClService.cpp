@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <fstream>
+#include <cmath>
 
 #include "ClService.hpp"
 
@@ -57,14 +58,35 @@ static cl::Kernel loadKernel (const cl::Program& program, string kernelName, int
     catch (cl::Error &e)
     {
         errCode = 1;
-        message = "Load kernel \"" + kernelName + "\"  error, " + string (e.what ()) + ", " + ClService::errMsg (errCode);
+        message = "Load kernel \"" + kernelName + "\" error, " + string (e.what ()) + ", " + ClService::errMsg (errCode);
     }
     catch (exception &e)
     {
         errCode = 1;
-        message = "Load kernel \"" + kernelName + "\"  error, " + e.what ();
+        message = "Load kernel \"" + kernelName + "\" error, " + e.what ();
     }
     return {};
+}
+
+template <cl_int name>
+static size_t wgInfo (const cl::Kernel& kernel, const cl::Device& device, int& errCode)
+{
+    if (0 != errCode)
+        return {};
+
+    return kernel.getWorkGroupInfo<name> (device);
+}
+
+static void check (const bool condition, const string msg, int& errCode, string& message)
+{
+    if (0 != errCode)
+        return;
+
+    if (!condition)
+    {
+        errCode = 1;
+        message = msg;
+    }
 }
 
 bool initialize (int& errCode, string& message)
@@ -95,11 +117,17 @@ ClService::ClService ():
 
     vectorSize       {device.getInfo<CL_DEVICE_PREFERRED_VECTOR_WIDTH_DOUBLE> () == 2U ? 2U : 1U}, // fallback to 1 if 2 is not supported
     sfx              {vectorSize > 1 ? to_string (vectorSize) : ""},
-    globMem10Percent {static_cast<size_t> (device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE> () / 1024.0 / 10.0)},
-    computeUnits     {device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS> ()},
+    compUnits        {device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS> ()},
+    globMemKb        {device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE> () / 1024},
+    globMemFreeKb    {device.getInfo<CL_DEVICE_GLOBAL_FREE_MEMORY_AMD> ()[0]},
+    globMem10Percent {(check (globMemFreeKb > globMemKb * 9.0 / 10.0 && globMemFreeKb < globMemKb,
+                              "Invalid free mem(" + to_string (globMemFreeKb) + " Kb) size on the device with glob mem(" + to_string (globMemKb) + " Kb)",
+                              errCode, message),
+                      static_cast<size_t> (globMemKb / 10.0))},
 
     program {loadProgram ("kernels", errCode, message)},
 
+    initZero    {loadKernel (program, "init_zero",  errCode, message)},
     uminus      {loadKernel (program, "uminus",     errCode, message)},
     transpose   {loadKernel (program, "transpose",  errCode, message)},
     add         {loadKernel (program, "add",        errCode, message)},
@@ -112,14 +140,15 @@ ClService::ClService ():
     el_div      {loadKernel (program, "el_div",     errCode, message)},
     sigmoid     {loadKernel (program, "sigmoid",    errCode, message)},
 
+    sumFullLoad           {loadKernel (program, "sum_full_load_2", errCode, message)},
+    sumCompUnit           {loadKernel (program, "sum_comp_unit_2", errCode, message)},
+    sumCompUnitWgSize     {wgInfo<CL_KERNEL_WORK_GROUP_SIZE>                    (sumCompUnit, device, errCode)},
+    sumCompUnitWgMultiple {wgInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE> (sumCompUnit, device, errCode)},
+
     initialized {initialize (errCode, message)},
     statusMsg   {message}
 
 {
-    size_t globMemSizeKb = device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE> () / 1024;
-    auto globMemFreeKb   = device.getInfo<CL_DEVICE_GLOBAL_FREE_MEMORY_AMD> ();
-    if (globMemFreeKb[0] < globMemSizeKb * 9.0 / 10.0 || globMemFreeKb[0] > globMemSizeKb)
-        throw runtime_error {"Invalid free mem(" + to_string (globMemFreeKb[0]) + " Kb) size on the device with glob mem(" + to_string (globMemSizeKb) + ")"};
 }
 
 ClService::~ClService ()

@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <cassert>
+#include <cmath>
 
 #include "ClMatrix.hpp"
 #include "ClService.hpp"
@@ -18,12 +19,13 @@ extern ClService clSrvc;
 #define STRINGIZE2(x) #x
 #define __(x) do {const int val = (x); if (val) throw runtime_error {"\n" __FILE__ ":" STRINGIZE(__LINE__) ":1 ERROR: " + clSrvc.errMsg (val)};} while (0)
 
-static size_t sizeVec (const size_t rows, const size_t cols)
+//__________________________________________________________________________________________________
+
+static size_t sizeVectorized (const size_t size)
 {
-    int elements = rows * cols;
-    int extra = (clSrvc.vectorSize - elements % clSrvc.vectorSize) % clSrvc.vectorSize;
-    return (elements + extra);
+    return ceil ((double) size / (double) clSrvc.vectorSize);
 }
+//__________________________________________________________________________________________________
 
 static cl_mem createBuffer (const size_t bytes)
 {
@@ -33,18 +35,22 @@ static cl_mem createBuffer (const size_t bytes)
         throw runtime_error {"Create memory buffer (" + to_string (err) + ")"};
     return mem;
 }
+//__________________________________________________________________________________________________
 
 ClMatrix::ClMatrix (const size_t r, const size_t c):
     ClMatrix {r, c, nullptr}
 {
 }
+//__________________________________________________________________________________________________
 
 ClMatrix::ClMatrix (const size_t r, const size_t c, const double* data):
-    rows     {r},
-    cols     {c},
-    size     {rows * cols},
-    byteSize {size * sizeof (double)},
-    mem      {createBuffer (byteSize)}
+    rows        {r},
+    cols        {c},
+    size        {rows * cols},
+    sizeVec     {sizeVectorized (size)},
+    byteSize    {size * sizeof (double)},
+    byteSizeVec {sizeVec * clSrvc.vectorSize * sizeof (double)},
+    mem         {createBuffer (byteSizeVec)}
 {
     size_t freeGlobMem[2];
     __(clGetDeviceInfo (clSrvc.device (), CL_DEVICE_GLOBAL_FREE_MEMORY_AMD,
@@ -70,20 +76,24 @@ ClMatrix::ClMatrix (const int r, const int c, const double* data):
 }
 
 ClMatrix::ClMatrix (ClMatrix&& other):
-    rows     {other.rows},
-    cols     {other.cols},
-    size     {other.size},
-    byteSize {other.byteSize},
-    mem      {other.mem}
+    rows        {other.rows},
+    cols        {other.cols},
+    size        {other.size},
+    sizeVec     {other.sizeVec},
+    byteSize    {other.byteSize},
+    byteSizeVec {other.byteSizeVec},
+    mem         {other.mem}
 {
     other.mem   = nullptr;
 }
+//__________________________________________________________________________________________________
 
 ClMatrix::~ClMatrix ()
 {
     if (mem != nullptr)
         __(clReleaseMemObject (mem));
 }
+//__________________________________________________________________________________________________
 
 void ClMatrix::copyTo (double* data) const
 {
@@ -95,6 +105,7 @@ void ClMatrix::copyTo (double* data) const
     if (err != CL_SUCCESS)
         throw runtime_error {"Couldn't read from the cl buffer object (" + to_string (err) + ")"};
 }
+//__________________________________________________________________________________________________
 
 ClMatrix ClMatrix::uminus () const
 {
@@ -112,6 +123,7 @@ ClMatrix ClMatrix::uminus () const
 
     return result;
 }
+//__________________________________________________________________________________________________
 
 ClMatrix ClMatrix::transpose () const
 {
@@ -129,6 +141,7 @@ ClMatrix ClMatrix::transpose () const
 
     return result;
 }
+//__________________________________________________________________________________________________
 
 ClMatrix ClMatrix::add (const ClMatrix& other) const
 {
@@ -149,6 +162,7 @@ ClMatrix ClMatrix::add (const ClMatrix& other) const
 
     return result;
 }
+//__________________________________________________________________________________________________
 
 ClMatrix ClMatrix::add (const double scalar) const
 {
@@ -167,6 +181,7 @@ ClMatrix ClMatrix::add (const double scalar) const
 
     return result;
 }
+//__________________________________________________________________________________________________
 
 ClMatrix ClMatrix::sub (const ClMatrix& other) const
 {
@@ -187,11 +202,13 @@ ClMatrix ClMatrix::sub (const ClMatrix& other) const
 
     return result;
 }
+//__________________________________________________________________________________________________
 
 ClMatrix ClMatrix::sub (const double scalar) const
 {
     return add (-scalar);
 }
+//__________________________________________________________________________________________________
 
 ClMatrix ClMatrix::subtrahend (const double minuend) const
 {
@@ -210,6 +227,7 @@ ClMatrix ClMatrix::subtrahend (const double minuend) const
 
     return result;
 }
+//__________________________________________________________________________________________________
 
 ClMatrix ClMatrix::mul (const ClMatrix& other) const
 {
@@ -232,6 +250,7 @@ ClMatrix ClMatrix::mul (const ClMatrix& other) const
 
     return result;
 }
+//__________________________________________________________________________________________________
 
 ClMatrix ClMatrix::mul (const double scalar) const
 {
@@ -250,6 +269,7 @@ ClMatrix ClMatrix::mul (const double scalar) const
 
     return result;
 }
+//__________________________________________________________________________________________________
 
 ClMatrix ClMatrix::el_mul (const ClMatrix& other) const
 {
@@ -270,6 +290,7 @@ ClMatrix ClMatrix::el_mul (const ClMatrix& other) const
 
     return result;
 }
+//__________________________________________________________________________________________________
 
 ClMatrix ClMatrix::trans_mul (const ClMatrix& other) const
 {
@@ -291,6 +312,7 @@ ClMatrix ClMatrix::trans_mul (const ClMatrix& other) const
 
     return result;
 }
+//__________________________________________________________________________________________________
 
 ClMatrix ClMatrix::mul_trans (const ClMatrix& other) const
 {
@@ -312,11 +334,13 @@ ClMatrix ClMatrix::mul_trans (const ClMatrix& other) const
 
     return result;
 }
+//__________________________________________________________________________________________________
 
 ClMatrix ClMatrix::div (const double scalar) const
 {
     return mul (1 / scalar);
 }
+//__________________________________________________________________________________________________
 
 ClMatrix ClMatrix::divisor (const double dividend) const
 {
@@ -335,6 +359,7 @@ ClMatrix ClMatrix::divisor (const double dividend) const
 
     return result;
 }
+//__________________________________________________________________________________________________
 
 ClMatrix ClMatrix::el_div (const ClMatrix& other) const
 {
@@ -355,6 +380,7 @@ ClMatrix ClMatrix::el_div (const ClMatrix& other) const
 
     return result;
 }
+//__________________________________________________________________________________________________
 
 ClMatrix ClMatrix::sigmoid () const
 {
@@ -372,8 +398,78 @@ ClMatrix ClMatrix::sigmoid () const
 
     return result;
 }
+//__________________________________________________________________________________________________
 
 ClMatrix ClMatrix::sum () const
 {
-    return {1, 1};
+    ClMatrix result {1, 1};
+
+    cl_command_queue queue   = clSrvc.queue ();
+    cl_kernel        kernel;
+
+    const size_t vectorSize = clSrvc.vectorSize;
+    const size_t compUnits  = clSrvc.compUnits;
+    const size_t wg         = clSrvc.sumCompUnitWgSize;
+
+    const size_t extra = sizeVec * vectorSize - size;
+    if (extra > 0)
+    {
+        kernel = clSrvc.initZero ();
+        __(clSetKernelArg (kernel, 0, sizeof (cl_mem), &mem));
+        __(clEnqueueNDRangeKernel (queue, kernel, 1, &size, &extra, nullptr, 0, nullptr, nullptr));
+    }
+
+    static ClMatrix tmp {compUnits * vectorSize, 1};
+
+    size_t   globalSize[1];
+    size_t   localSize[1];
+    cl_mem   src;
+    cl_ulong count;
+    size_t   localMem;
+
+    if (sizeVec > wg)
+    {
+        const cl_uint iter  = ceil ((double) sizeVec / (double) (compUnits * wg));
+                      count = sizeVec;
+
+        globalSize[0] = compUnits * wg;  assert (log2 (wg) == ceil (log2 (wg)));
+        localSize[0]  = wg;
+        localMem      = localSize[0] * vectorSize * sizeof (double);
+
+        kernel = clSrvc.sumFullLoad ();
+
+        __(clSetKernelArg (kernel, 0, sizeof (cl_mem),      &mem));
+        __(clSetKernelArg (kernel, 1, sizeof (cl_uint),     &iter));
+        __(clSetKernelArg (kernel, 2, sizeof (cl_ulong),    &count));
+        __(clSetKernelArg (kernel, 3, localMem,             nullptr));
+        __(clSetKernelArg (kernel, 4, sizeof (cl_mem),      &tmp.mem));
+
+        __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, globalSize, localSize, 0, nullptr, nullptr));
+
+        globalSize[0] = pow (2, (int) ceil (log2 (compUnits)));  assert (globalSize[0] <= wg);
+        localSize[0]  = globalSize[0];
+        src           = tmp.mem;
+        count         = compUnits;
+        localMem      = tmp.byteSizeVec;
+    }
+    else
+    {
+        globalSize[0] = pow (2, (int) ceil (log2 (sizeVec)));  assert (globalSize[0] <= wg);
+        localSize[0]  = globalSize[0];
+        src           = mem;
+        count         = sizeVec;
+        localMem      = localSize[0] * vectorSize * sizeof (double);
+    }
+
+    kernel = clSrvc.sumCompUnit ();
+
+    __(clSetKernelArg (kernel, 0, sizeof (cl_mem),   &src));
+    __(clSetKernelArg (kernel, 1, sizeof (cl_ulong), &count));
+    __(clSetKernelArg (kernel, 2, localMem,          nullptr));
+    __(clSetKernelArg (kernel, 3, sizeof (cl_mem),   &result.mem));
+
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, globalSize, localSize, 0, nullptr, nullptr));
+
+    return result;
 }
+//__________________________________________________________________________________________________

@@ -89,6 +89,11 @@ Matrix octave_cl_matrix::matrix_value (bool = false) const
     return retval;
 }
 
+octave_value octave_cl_matrix::resize (const dim_vector&, bool) const
+{
+  report_error ("octave_cl_matrix::resize (): wrong type argument 'cl_matrix'");
+}
+
 static octave_cl_matrix* uminus (const ClMatrix& mat)
 {
     try
