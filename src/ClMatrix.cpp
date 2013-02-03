@@ -409,12 +409,11 @@ ClMatrix ClMatrix::sum () const
 
     const size_t vectorSize = clSrvc.vectorSize;
     const size_t compUnits  = clSrvc.compUnits;
-    const size_t wg         = clSrvc.sumCompUnitWgSize;
 
     const size_t extra = sizeVec * vectorSize - size;
     if (extra > 0)
     {
-        kernel = clSrvc.initZero ();
+        kernel = clSrvc.init_zero ();
         __(clSetKernelArg (kernel, 0, sizeof (cl_mem), &mem));
         __(clEnqueueNDRangeKernel (queue, kernel, 1, &size, &extra, nullptr, 0, nullptr, nullptr));
     }
@@ -427,8 +426,10 @@ ClMatrix ClMatrix::sum () const
     cl_ulong count;
     size_t   localMem;
 
+    size_t wg = clSrvc.sum_comp_unit_Wg;
     if (sizeVec > wg)
     {
+        wg = clSrvc.sum_full_load_Wg;
         const cl_uint iter  = ceil ((double) sizeVec / (double) (compUnits * wg));
                       count = sizeVec;
 
@@ -436,7 +437,7 @@ ClMatrix ClMatrix::sum () const
         localSize[0]  = wg;
         localMem      = localSize[0] * vectorSize * sizeof (double);
 
-        kernel = clSrvc.sumFullLoad ();
+        kernel = clSrvc.sum_full_load ();
 
         __(clSetKernelArg (kernel, 0, sizeof (cl_mem),      &mem));
         __(clSetKernelArg (kernel, 1, sizeof (cl_uint),     &iter));
@@ -446,7 +447,7 @@ ClMatrix ClMatrix::sum () const
 
         __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, globalSize, localSize, 0, nullptr, nullptr));
 
-        globalSize[0] = pow (2, (int) ceil (log2 (compUnits)));  assert (globalSize[0] <= wg);
+        globalSize[0] = pow (2, (int) ceil (log2 (compUnits)));  assert (globalSize[0] <= clSrvc.sum_comp_unit_Wg);
         localSize[0]  = globalSize[0];
         src           = tmp.mem;
         count         = compUnits;
@@ -454,14 +455,14 @@ ClMatrix ClMatrix::sum () const
     }
     else
     {
-        globalSize[0] = pow (2, (int) ceil (log2 (sizeVec)));  assert (globalSize[0] <= wg);
+        globalSize[0] = pow (2, (int) ceil (log2 (sizeVec)));  assert (globalSize[0] <= clSrvc.sum_comp_unit_Wg);
         localSize[0]  = globalSize[0];
         src           = mem;
         count         = sizeVec;
         localMem      = localSize[0] * vectorSize * sizeof (double);
     }
 
-    kernel = clSrvc.sumCompUnit ();
+    kernel = clSrvc.sum_comp_unit ();
 
     __(clSetKernelArg (kernel, 0, sizeof (cl_mem),   &src));
     __(clSetKernelArg (kernel, 1, sizeof (cl_ulong), &count));

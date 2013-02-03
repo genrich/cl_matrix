@@ -22,7 +22,7 @@ public:
     const size_t      globMemFreeKb;
     const size_t      globMem10Percent;
     const cl::Program program;
-    cl::Kernel        initZero;
+    cl::Kernel        init_zero;
     cl::Kernel        uminus;
     cl::Kernel        transpose;
     cl::Kernel        add;
@@ -34,10 +34,10 @@ public:
     cl::Kernel        scalar_div;
     cl::Kernel        el_div;
     cl::Kernel        sigmoid;
-    cl::Kernel        sumFullLoad;
-    cl::Kernel        sumCompUnit;
-    const size_t      sumCompUnitWgSize;
-    const size_t      sumCompUnitWgMultiple;
+    cl::Kernel        sum_full_load;
+    cl::Kernel        sum_comp_unit;
+    const size_t      sum_full_load_Wg;
+    const size_t      sum_comp_unit_Wg;
 
     const bool        initialized;
     const std::string statusMsg;

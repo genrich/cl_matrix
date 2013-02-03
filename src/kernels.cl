@@ -105,7 +105,71 @@ __kernel void sigmoid (__global const double* src,
 }
 //__________________________________________________________________________________________________
 
-__kernel void sum_full_load_2 (__global const double2* src,
+__kernel __attribute__((vec_type_hint(double)))
+         void sum_full_load (__global const double* src,
+                                      const uint    iter,
+                                      const ulong   count,
+                             __local  double*       sums,
+                             __global double*       dst)
+{
+    const size_t global_id       = get_global_id  (0);
+    const size_t local_id        = get_local_id   (0);
+    const size_t local_size      = get_local_size (0);
+    const size_t group_id        = get_group_id   (0);
+    const size_t group_size      = get_num_groups (0);
+    const size_t half_local_size = local_size / 2;
+
+    double sum = 0;
+    for (uint j = 0; j < iter; j++)
+    {
+        const ulong id = global_id + j * group_size * local_size;
+        sum += select ((double) 0, src[id], (long) (id < count));
+    }
+    sums [local_id] = sum;
+    barrier (CLK_LOCAL_MEM_FENCE);
+
+    for (uint j = half_local_size; j > 0; j >>= 1)
+    {
+        if (local_id < j)
+            sums[local_id] += sums[local_id + j];
+
+        barrier (CLK_LOCAL_MEM_FENCE);
+    }
+
+    if (local_id == 0)
+        dst[group_id] = sums[0];
+}
+//__________________________________________________________________________________________________
+
+__kernel __attribute__((vec_type_hint(double)))
+         void sum_comp_unit (__global const double* src,
+                                      const ulong   count,
+                             __local  double*       sums,
+                             __global double*       dst)
+{
+    const size_t local_id        = get_local_id   (0);
+    const size_t local_size      = get_local_size (0);
+    const size_t half_local_size = local_size / 2;
+    const ulong  id              = local_id;
+
+    sums[local_id] = select ((double) 0, src[local_id], (long) (id < count));
+    barrier (CLK_LOCAL_MEM_FENCE);
+
+    for (uint j = half_local_size; j > 0; j >>= 1)
+    {
+        if (local_id < j)
+            sums[local_id] += sums[local_id + j];
+
+        barrier(CLK_LOCAL_MEM_FENCE);
+    }
+
+    if (local_id == 0)
+        dst[0] = sums[0];
+}
+//__________________________________________________________________________________________________
+
+__kernel __attribute__((vec_type_hint(double2)))
+         void sum_full_load_2 (__global const double2* src,
                                         const uint     iter,
                                         const ulong    count,
                                __local  double2*       sums,
@@ -140,7 +204,8 @@ __kernel void sum_full_load_2 (__global const double2* src,
 }
 //__________________________________________________________________________________________________
 
-__kernel void sum_comp_unit_2 (__global const double2* src,
+__kernel __attribute__((vec_type_hint(double2)))
+         void sum_comp_unit_2 (__global const double2* src,
                                         const ulong    count,
                                __local  double2*       sums,
                                __global double*        dst)

@@ -116,7 +116,7 @@ ClService::ClService ():
     queue   {ctx, device},
 
     vectorSize       {device.getInfo<CL_DEVICE_PREFERRED_VECTOR_WIDTH_DOUBLE> () == 2U ? 2U : 1U}, // fallback to 1 if 2 is not supported
-    sfx              {vectorSize > 1 ? to_string (vectorSize) : ""},
+    sfx              {vectorSize > 1 ? "_" + to_string (vectorSize) : ""},
     compUnits        {device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS> ()},
     globMemKb        {device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE> () / 1024},
     globMemFreeKb    {device.getInfo<CL_DEVICE_GLOBAL_FREE_MEMORY_AMD> ()[0]},
@@ -127,7 +127,7 @@ ClService::ClService ():
 
     program {loadProgram ("kernels", errCode, message)},
 
-    initZero    {loadKernel (program, "init_zero",  errCode, message)},
+    init_zero   {loadKernel (program, "init_zero",  errCode, message)},
     uminus      {loadKernel (program, "uminus",     errCode, message)},
     transpose   {loadKernel (program, "transpose",  errCode, message)},
     add         {loadKernel (program, "add",        errCode, message)},
@@ -140,10 +140,10 @@ ClService::ClService ():
     el_div      {loadKernel (program, "el_div",     errCode, message)},
     sigmoid     {loadKernel (program, "sigmoid",    errCode, message)},
 
-    sumFullLoad           {loadKernel (program, "sum_full_load_2", errCode, message)},
-    sumCompUnit           {loadKernel (program, "sum_comp_unit_2", errCode, message)},
-    sumCompUnitWgSize     {wgInfo<CL_KERNEL_WORK_GROUP_SIZE>                    (sumCompUnit, device, errCode)},
-    sumCompUnitWgMultiple {wgInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE> (sumCompUnit, device, errCode)},
+    sum_full_load    {loadKernel (program, "sum_full_load" + sfx, errCode, message)},
+    sum_comp_unit    {loadKernel (program, "sum_comp_unit" + sfx, errCode, message)},
+    sum_full_load_Wg {wgInfo<CL_KERNEL_WORK_GROUP_SIZE> (sum_full_load, device, errCode)},
+    sum_comp_unit_Wg {wgInfo<CL_KERNEL_WORK_GROUP_SIZE> (sum_comp_unit, device, errCode)},
 
     initialized {initialize (errCode, message)},
     statusMsg   {message}
