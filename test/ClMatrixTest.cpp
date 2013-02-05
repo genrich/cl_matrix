@@ -415,6 +415,54 @@ BOOST_AUTO_TEST_CASE (sigmoid_Test)
 }
 //__________________________________________________________________________________________________
 
+BOOST_AUTO_TEST_CASE (fun_sigmoid_Test)
+{
+    BOOST_CHECK_MESSAGE (clSrvc.initialized, clSrvc.statusMsg);
+    constexpr int size = 4;
+    double data[] = {1, 2, 3, 4},
+           result[size];
+    ClMatrix mat1 {2, 2, data};
+
+    ClMatrix mat = mat1.fun ("1 / (1 + exp (-x))");
+    mat.copyTo (result);
+
+    for (int i = 0; i < size; i++)
+    {
+        BOOST_CHECK_SMALL (result[i] - (1 / (1 + exp (-data[i]))), tolerance);
+    }
+}
+//__________________________________________________________________________________________________
+
+BOOST_AUTO_TEST_CASE (fun_add_Test)
+{
+    BOOST_CHECK_MESSAGE (clSrvc.initialized, clSrvc.statusMsg);
+    double data1[] = {1, 2, 3, 4},
+           data2[] = {5, 2, INFINITY, -2},
+           result[4],
+           expectedResult[] = {6, 4, INFINITY, 2};
+    ClMatrix mat1 {2, 2, data1},
+             mat2 {2, 2, data2};
+
+    // these are all different dynamic kernels, test they are correctly indexed
+    mat1.fun ("x1  + x2", mat2);
+    mat1.fun ("x1   + x2", mat2);
+    mat1.fun ("x1    + x2", mat2);
+    mat1.fun ("x1     + x2", mat2);
+    mat1.fun ("x1      + x2", mat2);
+    mat1.fun ("x1       + x2", mat2);
+    mat1.fun ("x1        + x2", mat2);
+    mat1.fun ("x1         + x2", mat2);
+    mat1.fun ("x1          + x2", mat2);
+    mat1.fun ("x1           + x2", mat2);
+    mat1.fun ("x1            + x2", mat2);
+
+    ClMatrix mat = mat1.fun ("x1 + x2", mat2);
+    mat.copyTo (result);
+
+    BOOST_CHECK_EQUAL_COLLECTIONS (&result[0], &result[4], &expectedResult[0], &expectedResult[4]);
+}
+//__________________________________________________________________________________________________
+
 BOOST_AUTO_TEST_CASE (sum_Test)
 {
     BOOST_CHECK_MESSAGE (clSrvc.initialized, clSrvc.statusMsg);

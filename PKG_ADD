@@ -1,2 +1,3 @@
-autoload ("cl_sum",  "cl_matrix.oct");
-autoload ("sigmoid", "cl_matrix.oct");
+autoload ("cl_fun",     "cl_matrix.oct");
+autoload ("cl_sigmoid", "cl_matrix.oct");
+autoload ("cl_sum",     "cl_matrix.oct");

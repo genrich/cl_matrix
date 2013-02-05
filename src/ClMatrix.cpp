@@ -382,6 +382,44 @@ ClMatrix ClMatrix::el_div (const ClMatrix& other) const
 }
 //__________________________________________________________________________________________________
 
+ClMatrix ClMatrix::fun (const string& f) const
+{
+    ClMatrix result {rows, cols};
+
+    cl_command_queue queue      = clSrvc.queue ();
+    const size_t     workSize[] = {size};
+
+    cl_kernel kernel = clSrvc.getFun (f, 1);
+
+    __(clSetKernelArg (kernel, 0, sizeof (cl_mem), &mem));
+    __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &result.mem));
+
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, workSize, nullptr, 0, nullptr, nullptr));
+
+    return result;
+}
+//__________________________________________________________________________________________________
+
+ClMatrix ClMatrix::fun (const string& f, const ClMatrix& other) const
+{
+    if (rows != other.rows || cols != other.cols) throw runtime_error {"Matrix dimensions mismatch for element wise function"};
+
+    ClMatrix result {rows, cols};
+
+    cl_command_queue queue      = clSrvc.queue ();
+    const size_t     workSize[] = {size};
+
+    cl_kernel kernel = clSrvc.getFun (f, 2);
+
+    __(clSetKernelArg (kernel, 0, sizeof (cl_mem), &mem));
+    __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &other.mem));
+    __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
+
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, workSize, nullptr, 0, nullptr, nullptr));
+    return result;
+}
+//__________________________________________________________________________________________________
+
 ClMatrix ClMatrix::sigmoid () const
 {
     ClMatrix result {rows, cols};

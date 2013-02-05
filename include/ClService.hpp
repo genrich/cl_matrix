@@ -1,6 +1,9 @@
 #ifndef CL_SERVICE_HPP
 #define CL_SERVICE_HPP
 
+#include <unordered_map>
+#include <array>
+
 #define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.hpp>
 
@@ -44,6 +47,8 @@ public:
 
                        ClService  ();
                        ~ClService ();
+    cl_kernel          getFun     (const std::string&, const int);
+
     static std::string errMsg     (int);
 };
 

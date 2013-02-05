@@ -2,6 +2,7 @@
 #include <octave/ops.h>
 #include <octave/ov-re-mat.h>
 #include <octave/ov-scalar.h>
+#include <octave/ov-str-mat.h>
 
 #include "octave_cl_matrix.hpp"
 #include "ClService.hpp"
@@ -27,60 +28,72 @@ extern ClService clSrvc;
             report_error (e.what ());                     \
         }                                                 \
     }
+//__________________________________________________________________________________________________
 
 void report_error (string msg)
 {
     (*current_liboctave_error_handler) (msg.c_str ());
 }
+//__________________________________________________________________________________________________
 
-octave_cl_matrix::octave_cl_matrix ()
-    :matrix {1, 1, nullptr}
+octave_cl_matrix::octave_cl_matrix ():
+    matrix {1, 1, nullptr}
 {
 }
+//__________________________________________________________________________________________________
 
-octave_cl_matrix::octave_cl_matrix (const Matrix& m)
-    :matrix {m.rows (), m.cols (), m.data ()}
+octave_cl_matrix::octave_cl_matrix (const Matrix& m):
+    matrix {m.rows (), m.cols (), m.data ()}
 {
 }
+//__________________________________________________________________________________________________
 
-octave_cl_matrix::octave_cl_matrix (ClMatrix m)
-    :matrix {move (m)}
+octave_cl_matrix::octave_cl_matrix (ClMatrix m):
+    matrix {move (m)}
 {
 }
+//__________________________________________________________________________________________________
 
 octave_cl_matrix::~octave_cl_matrix ()
 {
 }
+//__________________________________________________________________________________________________
 
 const ClMatrix& octave_cl_matrix::cl_matrix_value () const
 {
     return matrix;
 }
+//__________________________________________________________________________________________________
 
 void octave_cl_matrix::print (std::ostream& os, bool pr_as_read_syntax) const
 {
     os << "cl_matrix (" << matrix.rows << ", " << matrix.cols << ");  content: double (CL_MATRIX)\n";
 }
+//__________________________________________________________________________________________________
 
 bool octave_cl_matrix::is_constant () const
 {
     return true;
 }
+//__________________________________________________________________________________________________
 
 bool octave_cl_matrix::is_defined () const
 {
     return true;
 }
+//__________________________________________________________________________________________________
 
 dim_vector octave_cl_matrix::dims () const
 {
     return dim_vector (matrix.rows, matrix.cols);
 }
+//__________________________________________________________________________________________________
 
 size_t octave_cl_matrix::byte_size () const
 {
     return matrix.byteSize;
 }
+//__________________________________________________________________________________________________
 
 Matrix octave_cl_matrix::matrix_value (bool = false) const
 {
@@ -88,11 +101,13 @@ Matrix octave_cl_matrix::matrix_value (bool = false) const
     matrix.copyTo (retval.fortran_vec ());
     return retval;
 }
+//__________________________________________________________________________________________________
 
 octave_value octave_cl_matrix::resize (const dim_vector&, bool) const
 {
   report_error ("octave_cl_matrix::resize (): wrong type argument 'cl_matrix'");
 }
+//__________________________________________________________________________________________________
 
 static octave_cl_matrix* uminus (const ClMatrix& mat)
 {
@@ -105,6 +120,7 @@ static octave_cl_matrix* uminus (const ClMatrix& mat)
         report_error (e.what ());
     }
 }
+//__________________________________________________________________________________________________
 
 static octave_cl_matrix* transpose (const ClMatrix& mat)
 {
@@ -117,6 +133,7 @@ static octave_cl_matrix* transpose (const ClMatrix& mat)
         report_error (e.what ());
     }
 }
+//__________________________________________________________________________________________________
 
 CL_MATRIX_BINOP (add,            add,        ClMatrix& mat, ClMatrix& x)
 CL_MATRIX_BINOP (add_mat_scalar, add,        ClMatrix& mat, double x)
@@ -145,6 +162,7 @@ static octave_cl_matrix* div_mat_scalar (const ClMatrix& mat, const double x)
         report_error (e.what ());
     }
 }
+//__________________________________________________________________________________________________
 
 CL_MATRIX_BINOP (div_scalar_mat, divisor, double x,      ClMatrix& mat)
 CL_MATRIX_BINOP (el_div,         el_div,  ClMatrix& mat, ClMatrix& x)
@@ -173,6 +191,7 @@ DEFCONV(cl_matrix_to_matrix, octave_cl_matrix, octave_matrix)
   CAST_CONV_ARG (const octave_cl_matrix&);
   return new octave_matrix {v.matrix_value ()};
 }
+//__________________________________________________________________________________________________
 
 DEFUN_DLD (cl_matrix, args, nargout,
 "-*- texinfo -*-                                                           \n\
@@ -242,21 +261,97 @@ Create OpenCL matrix                                                       \n\
     }
     return {};
 }
+//__________________________________________________________________________________________________
 
-DEFUN_DLD(sigmoid, args, nargout,
-"-*- texinfo -*-                                                           \n\
-@deftypefn {Mapping Function} {@var{cl_matrix} =} sigmoid (@var{cl_matrix})\n\
-Apply @code{sigmoid} function to @var{cl_matrix}                           \n\
-                                                                           \n\
-@example                                                                   \n\
-@group                                                                     \n\
-   1                                                                       \n\
--------                                                                    \n\
-     -X                                                                    \n\
-1 + e                                                                      \n\
-@end group                                                                 \n\
-@end example                                                               \n\
-@end deftypefn                                                             \n")
+DEFUN_DLD(cl_fun, args, nargout,
+"-*- texinfo -*-                                                               \n\
+@deftypefn {Mapping Function} {@var{C} =} cl_fun (@var{str}, @var{A})          \n\
+@deftypefnx{Mapping Function} {@var{C} =} cl_fun (@var{str}, @var{A}, @var{B}) \n\
+Apply function expression @var{str} to matrix elements.                        \n\
+                                                                               \n\
+Function expression @var{str} must be a string.                                \n\
+It must be a valid OpenCL C kernel language expression.                        \n\
+Matrices @var{A}, @var{B} must be instances of cl_matrix type.                 \n\
+                                                                               \n\
+If only one matrix @var{A} is provided then its elements can be accessed       \n\
+in function expression as @code{x}                                             \n\
+                                                                               \n\
+@example                                                                       \n\
+C = cl_fun ('1 / (1 + exp (-x))', A);                                          \n\
+@end example                                                                   \n\
+                                                                               \n\
+If both matrices @var{A} and @var{B} are provided their corresponding          \n\
+elements are @code{x1} @code{x2}                                               \n\
+                                                                               \n\
+@example                                                                       \n\
+C = cl_fun ('x1 + x2', A, B);                                                  \n\
+@end example                                                                   \n\
+@end deftypefn                                                                 \n")
+{
+    int nargin = args.length ();
+    if (nargin == 2
+        && args (0). is_char_matrix ()
+        && args (1). type_id () == octave_cl_matrix::static_type_id ())
+    {
+        try
+        {
+            const octave_char_matrix& s = dynamic_cast<const octave_char_matrix&> (args (0). get_rep ());
+            const octave_cl_matrix&   m = dynamic_cast<const octave_cl_matrix&>   (args (1). get_rep ());
+
+            const string& funExpr = s.string_value ();
+            const ClMatrix& mat   = m.cl_matrix_value ();
+
+            return octave_value {new octave_cl_matrix {mat.fun (funExpr)}};
+        }
+        catch (exception& e)
+        {
+            report_error (e.what ());
+        }
+    }
+    else if (nargin == 3
+        && args (0). is_char_matrix ()
+        && args (1). type_id () == octave_cl_matrix::static_type_id ()
+        && args (2). type_id () == octave_cl_matrix::static_type_id ())
+    {
+        try
+        {
+            const octave_char_matrix& s  = dynamic_cast<const octave_char_matrix&> (args (0). get_rep ());
+            const octave_cl_matrix&   m1 = dynamic_cast<const octave_cl_matrix&>   (args (1). get_rep ());
+            const octave_cl_matrix&   m2 = dynamic_cast<const octave_cl_matrix&>   (args (2). get_rep ());
+
+            const string& funExpr = s.string_value ();
+            const ClMatrix& mat1  = m1.cl_matrix_value ();
+            const ClMatrix& mat2  = m2.cl_matrix_value ();
+
+            return octave_value {new octave_cl_matrix {mat1.fun (funExpr, mat2)}};
+        }
+        catch (exception& e)
+        {
+            report_error (e.what ());
+        }
+    }
+    else
+    {
+        print_usage ();
+    }
+    return {};
+}
+//__________________________________________________________________________________________________
+
+DEFUN_DLD(cl_sigmoid, args, nargout,
+"-*- texinfo -*-                                                               \n\
+@deftypefn {Mapping Function} {@var{cl_matrix} =} cl_sigmoid (@var{cl_matrix}) \n\
+Apply @code{sigmoid} function to @var{cl_matrix}                               \n\
+                                                                               \n\
+@example                                                                       \n\
+@group                                                                         \n\
+   1                                                                           \n\
+-------                                                                        \n\
+     -X                                                                        \n\
+1 + e                                                                          \n\
+@end group                                                                     \n\
+@end example                                                                   \n\
+@end deftypefn                                                                 \n")
 {
     int nargin = args.length ();
     if (nargin == 1
@@ -278,6 +373,7 @@ Apply @code{sigmoid} function to @var{cl_matrix}                           \n\
     }
     return {};
 }
+//__________________________________________________________________________________________________
 
 DEFUN_DLD(cl_sum, args, nargout,
 "-*- texinfo -*-                                                            \n\

@@ -4,6 +4,9 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <cassert>
+#include <sstream>
+#include <iomanip>
 
 #include "ClService.hpp"
 
@@ -154,6 +157,82 @@ ClService::ClService ():
 ClService::~ClService ()
 {
     clAmdBlasTeardown ();
+}
+
+cl_kernel ClService::getFun (const string& kernelExpr, const int arity)
+{
+    static cl::Program                             program;
+    static std::unordered_map<std::string, size_t> exprIdx;
+    static std::vector<cl::Kernel>                 funKernels;
+
+    static string dynamicKernels = "";
+    static size_t count = 0;
+
+    static const string prefix  = "__kernel void ";
+    static const string begin1  = "                                      \n"\
+                                  "(__global const double* src,          \n"\
+                                  " __global       double* dst)          \n"\
+                                  " {                                    \n"\
+                                  " const size_t id = get_global_id (0); \n"\
+                                  " const double x  = src [id];          \n"\
+                                  " dst[id] =                            \n";
+    static const string begin2  = "                                      \n"\
+                                  "(__global const double* src1,         \n"\
+                                  " __global const double* src2,         \n"\
+                                  " __global       double* dst)          \n"\
+                                  " {                                    \n"\
+                                  " const size_t id = get_global_id (0); \n"\
+                                  " const double x1 = src1 [id];         \n"\
+                                  " const double x2 = src2 [id];         \n"\
+                                  " dst[id] =                            \n";
+    static const string end = "\n;\n }\n\n";
+
+    try
+    {
+        return funKernels.at (exprIdx.at (kernelExpr)) ();
+    }
+    catch (const out_of_range&)
+    {
+        // Create new dynamic kernel
+        const size_t kernelIdx = count++;
+        exprIdx[kernelExpr]    = kernelIdx;
+
+        stringstream ss;
+        ss << "fun" << setw (3) << setfill ('0') << kernelIdx;
+        string kernelFun = ss.str ();
+
+        string kernelString;
+        switch (arity)
+        {
+            case 1: kernelString = prefix + kernelFun + begin1 + kernelExpr + end; break;
+            case 2: kernelString = prefix + kernelFun + begin2 + kernelExpr + end; break;
+            default: throw runtime_error {"Unknown arity"};
+        }
+        dynamicKernels += kernelString;
+
+        funKernels.clear ();
+        program = {clSrvc.ctx, dynamicKernels};
+        try
+        {
+            program.build (clSrvc.devices);
+            program.createKernels (&funKernels);
+            cl::Kernel kernel = funKernels.at (exprIdx.at (kernelExpr));
+
+            assert (funKernels.size () == exprIdx.size ());
+            assert (kernel.getInfo<CL_KERNEL_FUNCTION_NAME> () == kernelFun);
+
+            return kernel ();
+        }
+        catch (cl::Error &e)
+        {
+            count          = 0;
+            dynamicKernels = "";
+            funKernels.clear ();
+            exprIdx.clear    ();
+            throw runtime_error {"Dynamic kernel build error\n\n"
+                                 + program.getBuildInfo<CL_PROGRAM_BUILD_LOG> (clSrvc.device)};
+        }
+    }
 }
 
 std::string ClService::errMsg (int code)

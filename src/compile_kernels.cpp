@@ -12,10 +12,9 @@ int main ()
     cout << "Compiling kernels...\n";
 
     ifstream kernelsFile {"src/kernels.cl"};
-    string kernelsString {istreambuf_iterator<char> {kernelsFile}, istreambuf_iterator <char>{}};
+    string kernelsString {istreambuf_iterator<char> {kernelsFile}, istreambuf_iterator <char> {}};
 
-    cl::Program::Sources source {make_pair (kernelsString.c_str (), kernelsString.length () + 1)};
-    cl::Program program {clSrvc.ctx, source};
+    cl::Program program {clSrvc.ctx, kernelsString};
     try
     {
         program.build (clSrvc.devices);
@@ -30,7 +29,7 @@ int main ()
         cout << "done\n";
         return 0;
     }
-    catch (cl::Error &e)
+    catch (cl::Error&)
     {
         cout << "Error:\n";
         cout << program.getBuildInfo<CL_PROGRAM_BUILD_LOG> (clSrvc.device) << endl;

@@ -5,6 +5,12 @@ Multiplication with clAmdBlas
 
 Example problems:
 
+* Matrix elements mapping
+
+    Compare performace for sigmoid function mapping with [`sigmoid_compare.m`](sigmoid_compare.m)
+
+    Compare performace for 2 matrices element wise sum with [`el_sum_compare.m`](el_sum_compare.m)
+
 * Matrix elements sum
 
     Compare performance with [`sum_compare.m`](sum_compare.m)

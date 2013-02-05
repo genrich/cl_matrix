@@ -1,9 +1,9 @@
-function sum_compare (r, c, iterations)
+function sigmoid_compare (r, c, iterations)
     m = rand (r, c);
 
     tic;
     for i = 1:iterations
-        x = sum (sum (m));
+        x = sigmoid (m);
     end
     t = toc;
     result = x;
@@ -11,7 +11,7 @@ function sum_compare (r, c, iterations)
     mCl = cl_matrix (m);
     tic;
     for i = 1:iterations
-        x = cl_sum (mCl);
+        x = cl_fun ("1 / (1 + exp (-x))", mCl);
     end
     tCl = toc;
     resultCl = double (x);
@@ -22,4 +22,8 @@ function sum_compare (r, c, iterations)
              "          time       %10.6f           \n"...
              "ratio = --------- = ------------ = %f \n"...
              "         cl time     %10.6f           \n\n"], t, t / tCl, tCl);
+end
+
+function y = sigmoid (x)
+    y = 1 ./ (1 + exp (-x));
 end

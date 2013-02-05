@@ -1,17 +1,19 @@
-function sum_compare (r, c, iterations)
-    m = rand (r, c);
+function el_sum_compare (r, c, iterations)
+    m1 = rand (r, c);
+    m2 = rand (r, c);
 
     tic;
     for i = 1:iterations
-        x = sum (sum (m));
+        x = m1 + m2;
     end
     t = toc;
     result = x;
 
-    mCl = cl_matrix (m);
+    m1Cl = cl_matrix (m1);
+    m2Cl = cl_matrix (m2);
     tic;
     for i = 1:iterations
-        x = cl_sum (mCl);
+        x = cl_fun ("x1 + x2", m1Cl, m2Cl);
     end
     tCl = toc;
     resultCl = double (x);
