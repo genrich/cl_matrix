@@ -30,7 +30,7 @@ kernels: _build/compile_kernels src/kernels.cl
 _build/test: test/ClMatrixTest.cpp _build/ClMatrix.o _build/ClService.o
 	$(CC) $(CFLAGS_TEST) -o $@ $^ $(INC_DIRS:%=-I%) $(LIB_DIRS:%=-L%) $(LIBS_TEST:%=-l%)
 
-test: _build/test kernels
+test: _build _build/test kernels
 	_build/test --log_level=message --run_test=$(TEST_CASE)
 
 clean:

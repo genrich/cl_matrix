@@ -7,6 +7,9 @@
 #include <cassert>
 #include <sstream>
 #include <iomanip>
+#include <unordered_map>
+#include <array>
+
 
 #include "ClService.hpp"
 
@@ -138,6 +141,8 @@ ClService::ClService ():
     sub         {loadKernel (program, "sub",        errCode, message)},
     scalar_sub  {loadKernel (program, "scalar_sub", errCode, message)},
     mul_scalar  {loadKernel (program, "mul_scalar", errCode, message)},
+    pow_scalar  {loadKernel (program, "pow_scalar", errCode, message)},
+    scalar_pow  {loadKernel (program, "scalar_pow", errCode, message)},
     el_mul      {loadKernel (program, "el_mul",     errCode, message)},
     scalar_div  {loadKernel (program, "scalar_div", errCode, message)},
     el_div      {loadKernel (program, "el_div",     errCode, message)},

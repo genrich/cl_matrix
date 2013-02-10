@@ -220,8 +220,8 @@ ClMatrix ClMatrix::subtrahend (const double minuend) const
     cl_kernel kernel = clSrvc.scalar_sub ();
 
     __(clSetKernelArg (kernel, 0, sizeof (minuend), &minuend));
-    __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &mem));
-    __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
+    __(clSetKernelArg (kernel, 1, sizeof (cl_mem),  &mem));
+    __(clSetKernelArg (kernel, 2, sizeof (cl_mem),  &result.mem));
 
     __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, workSize, nullptr, 0, nullptr, nullptr));
 
@@ -263,6 +263,44 @@ ClMatrix ClMatrix::mul (const double scalar) const
 
     __(clSetKernelArg (kernel, 0, sizeof (cl_mem), &mem));
     __(clSetKernelArg (kernel, 1, sizeof (scalar), &scalar));
+    __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
+
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, workSize, nullptr, 0, nullptr, nullptr));
+
+    return result;
+}
+//__________________________________________________________________________________________________
+
+ClMatrix ClMatrix::pow (const double exponent) const
+{
+    ClMatrix result {rows, cols};
+
+    cl_command_queue queue      = clSrvc.queue ();
+    const size_t     workSize[] = {size};
+
+    cl_kernel kernel = clSrvc.pow_scalar ();
+
+    __(clSetKernelArg (kernel, 0, sizeof (cl_mem),   &mem));
+    __(clSetKernelArg (kernel, 1, sizeof (exponent), &exponent));
+    __(clSetKernelArg (kernel, 2, sizeof (cl_mem),   &result.mem));
+
+    __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, workSize, nullptr, 0, nullptr, nullptr));
+
+    return result;
+}
+//__________________________________________________________________________________________________
+
+ClMatrix ClMatrix::exponent (const double base) const
+{
+    ClMatrix result {rows, cols};
+
+    cl_command_queue queue      = clSrvc.queue ();
+    const size_t     workSize[] = {size};
+
+    cl_kernel kernel = clSrvc.scalar_pow ();
+
+    __(clSetKernelArg (kernel, 0, sizeof (base),   &base));
+    __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &mem));
     __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
 
     __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, workSize, nullptr, 0, nullptr, nullptr));
@@ -352,8 +390,8 @@ ClMatrix ClMatrix::divisor (const double dividend) const
     cl_kernel kernel = clSrvc.scalar_div ();
 
     __(clSetKernelArg (kernel, 0, sizeof (dividend), &dividend));
-    __(clSetKernelArg (kernel, 1, sizeof (cl_mem), &mem));
-    __(clSetKernelArg (kernel, 2, sizeof (cl_mem), &result.mem));
+    __(clSetKernelArg (kernel, 1, sizeof (cl_mem),   &mem));
+    __(clSetKernelArg (kernel, 2, sizeof (cl_mem),   &result.mem));
 
     __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, workSize, nullptr, 0, nullptr, nullptr));
 
@@ -485,7 +523,7 @@ ClMatrix ClMatrix::sum () const
 
         __(clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, globalSize, localSize, 0, nullptr, nullptr));
 
-        globalSize[0] = pow (2, (int) ceil (log2 (compUnits)));  assert (globalSize[0] <= clSrvc.sum_comp_unit_Wg);
+        globalSize[0] = ::pow (2, (int) ceil (log2 (compUnits)));  assert (globalSize[0] <= clSrvc.sum_comp_unit_Wg);
         localSize[0]  = globalSize[0];
         src           = tmp.mem;
         count         = compUnits;
@@ -493,7 +531,7 @@ ClMatrix ClMatrix::sum () const
     }
     else
     {
-        globalSize[0] = pow (2, (int) ceil (log2 (sizeVec)));  assert (globalSize[0] <= clSrvc.sum_comp_unit_Wg);
+        globalSize[0] = ::pow (2, (int) ceil (log2 (sizeVec)));  assert (globalSize[0] <= clSrvc.sum_comp_unit_Wg);
         localSize[0]  = globalSize[0];
         src           = mem;
         count         = sizeVec;

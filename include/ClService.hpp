@@ -1,9 +1,6 @@
 #ifndef CL_SERVICE_HPP
 #define CL_SERVICE_HPP
 
-#include <unordered_map>
-#include <array>
-
 #define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.hpp>
 
@@ -33,6 +30,8 @@ public:
     cl::Kernel        sub;
     cl::Kernel        scalar_sub;
     cl::Kernel        mul_scalar;
+    cl::Kernel        pow_scalar;
+    cl::Kernel        scalar_pow;
     cl::Kernel        el_mul;
     cl::Kernel        scalar_div;
     cl::Kernel        el_div;

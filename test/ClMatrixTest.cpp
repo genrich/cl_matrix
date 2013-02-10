@@ -369,6 +369,34 @@ BOOST_AUTO_TEST_CASE (el_div_ErrorTest)
 }
 //__________________________________________________________________________________________________
 
+BOOST_AUTO_TEST_CASE (pow_scalar_Test)
+{
+    BOOST_CHECK_MESSAGE (clSrvc.initialized, clSrvc.statusMsg);
+    double data1[] = {1, 2, 3, 4},
+           result[4],
+           expectedResult[] = {1, 4, 9, 16};
+    ClMatrix mat1 {2, 2, data1};
+
+    mat1.pow (2).copyTo (result);
+
+    BOOST_CHECK_EQUAL_COLLECTIONS (&result[0], &result[4], &expectedResult[0], &expectedResult[4]);
+}
+//__________________________________________________________________________________________________
+
+BOOST_AUTO_TEST_CASE (scalar_pow_Test)
+{
+    BOOST_CHECK_MESSAGE (clSrvc.initialized, clSrvc.statusMsg);
+    double data1[] = {1, 2, 3, 4},
+           result[4],
+           expectedResult[] = {2, 4, 8, 16};
+    ClMatrix mat1 {2, 2, data1};
+
+    mat1.exponent (2).copyTo (result);
+
+    BOOST_CHECK_EQUAL_COLLECTIONS (&result[0], &result[4], &expectedResult[0], &expectedResult[4]);
+}
+//__________________________________________________________________________________________________
+
 BOOST_AUTO_TEST_CASE (uminus_Test)
 {
     BOOST_CHECK_MESSAGE (clSrvc.initialized, clSrvc.statusMsg);

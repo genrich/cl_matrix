@@ -70,6 +70,24 @@ __kernel void mul_scalar (__global const double* src,
 }
 //__________________________________________________________________________________________________
 
+__kernel void pow_scalar (__global const double* src,
+                                   const double  scalar,
+                          __global double*       dst)
+{
+    const size_t id = get_global_id (0);
+    dst[id] = pow (src[id], scalar);
+}
+//__________________________________________________________________________________________________
+
+__kernel void scalar_pow (         const double  scalar,
+                          __global const double* src,
+                          __global double*       dst)
+{
+    const size_t id = get_global_id (0);
+    dst[id] = pow (scalar, src[id]);
+}
+//__________________________________________________________________________________________________
+
 __kernel void scalar_div (         const double  scalar,
                           __global const double* src,
                           __global double*       dst)

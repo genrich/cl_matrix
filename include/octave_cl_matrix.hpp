@@ -8,7 +8,7 @@
 
 class octave_cl_matrix: public octave_base_value
 {
-    const ClMatrix   matrix;
+    const ClMatrix matrix;
 
 public:
                     octave_cl_matrix  ();
