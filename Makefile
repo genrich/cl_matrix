@@ -1,7 +1,7 @@
 CFLAGS=-c -std=c++11 -fPIC -g -O2
 LDLAGS=-shared -Wl,-Bsymbolic
-INC_DIRS=include $(AMDAPPSDKROOT)/include $(AMDAPPBLASSDKROOT)/include /usr/local/include/octave-3.6.3
-LIB_DIRS=/usr/lib/fglrx $(AMDAPPBLASSDKROOT)/lib64 /usr/local/lib/octave/3.6.3 /usr/local/lib 
+INC_DIRS=include $(AMDAPPSDKROOT)/include $(AMDAPPBLASSDKROOT)/include /usr/local/include/octave-3.6.4
+LIB_DIRS=/usr/lib/fglrx $(AMDAPPBLASSDKROOT)/lib64 /usr/local/lib/octave/3.6.4 /usr/local/lib 
 LIBS=OpenCL clAmdBlas octinterp octave cruft
 
 CFLAGS_TEST=-std=c++11 -g
