@@ -1,0 +1,30 @@
+find_package(PackageHandleStandardArgs)
+
+find_library(OPENCL_LIBRARY OpenCL)
+get_filename_component(OPENCL_LIBRARY_DIR ${OPENCL_LIBRARY} PATH)
+find_path(OPENCL_INCLUDE_DIR CL/cl.hpp ${OPENCL_LIBRARY_DIR}/../include)
+
+if(NOT OPENCL_INCLUDE_DIR)
+    set(OPENCL_LIBRARY OPENCL_LIBRARY-NOTFOUND)
+
+    find_library(OPENCL_LIBRARY OpenCL ENV LD_LIBRARY_PATH NO_DEFAULT_PATH)
+    get_filename_component(OPENCL_LIBRARY_DIR ${OPENCL_LIBRARY} PATH)
+    find_path(OPENCL_INCLUDE_DIR CL/cl.hpp ${OPENCL_LIBRARY_DIR}/../include)
+endif()
+
+if(NOT OPENCL_INCLUDE_DIR)
+    set(OPENCL_LIBRARY OPENCL_LIBRARY-NOTFOUND)
+
+    find_library(OPENCL_LIBRARY OpenCL $ENV{AMDAPPSDKROOT}/lib NO_DEFAULT_PATH)
+    get_filename_component(OPENCL_LIBRARY_DIR ${OPENCL_LIBRARY} PATH)
+    find_path(OPENCL_INCLUDE_DIR CL/cl.hpp ${OPENCL_LIBRARY_DIR}/../include)
+endif()
+
+find_package_handle_standard_args(OpenCL REQUIRED_VARS OPENCL_LIBRARY OPENCL_INCLUDE_DIR)
+
+if(OPENCL_FOUND)
+    set(OPENCL_LIBRARIES ${OPENCL_LIBRARY})
+    set(OPENCL_INCLUDE_DIRS ${OPENCL_INCLUDE_DIR})
+endif()
+
+mark_as_advanced(OPENCL_LIBRARY OPENCL_LIBRARY_DIR OPENCL_INCLUDE_DIR)

@@ -1,7 +1,7 @@
 OpenCL matrix for Octave
 ========================
 
-Multiplication with clAmdBlas
+Multiplication with [clBLAS](https://github.com/clMathLibraries/clBLAS)
 
 Example problems:
 
