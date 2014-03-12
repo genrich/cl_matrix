@@ -2,7 +2,7 @@
 #define OCTAVE_CL_MATRIX_HPP
 
 #include <ostream>
-#include <octave/oct.h>
+#include <oct.h>
 
 #include <ClMatrix.hpp>
 

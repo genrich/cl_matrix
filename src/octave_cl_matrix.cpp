@@ -1,8 +1,8 @@
-#include <octave/config.h>
-#include <octave/ops.h>
-#include <octave/ov-re-mat.h>
-#include <octave/ov-scalar.h>
-#include <octave/ov-str-mat.h>
+#include <config.h>
+#include <ops.h>
+#include <ov-re-mat.h>
+#include <ov-scalar.h>
+#include <ov-str-mat.h>
 
 #include "octave_cl_matrix.hpp"
 #include "ClService.hpp"
